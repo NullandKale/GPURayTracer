@@ -50,6 +50,7 @@ namespace GPURayTracer.Rendering
             this.width = width;
             this.height = height;
             this.targetFPS = targetFPS;
+            run = true;
             frame = frameManager;
             output = generateRandom(width * height * 3);
             rFPStimer = new UpdateStatsTimer();
@@ -72,10 +73,15 @@ namespace GPURayTracer.Rendering
             }
         }
 
-        public void dispose()
+        public void JoinRenderThread()
         {
             run = false;
             t.Join();
+        }
+
+        public void dispose()
+        {
+            JoinRenderThread();
             cpu.Dispose();
             cuda.Dispose();
             context.Dispose();
@@ -96,7 +102,9 @@ namespace GPURayTracer.Rendering
                     ready = false;
                     rFPStimer.startUpdate();
                     buffer0.CopyFrom(output, 0, 0, output.Length);
-                    generateConwayImage(ref output, width, height, buffer0, buffer1);
+
+                    generateConwayImage(width, height, buffer0, buffer1);
+                    
                     frame.write(ref output);
                     rFPStimer.endUpdateForTargetUpdateTime((1000.0 / targetFPS), true);
                     ready = true;
@@ -132,22 +140,22 @@ namespace GPURayTracer.Rendering
             }
         }
 
-        public void generateConwayImage(ref byte[] data, int width, int height, MemoryBuffer<byte> buffer0, MemoryBuffer<byte> buffer1)
+        public void generateConwayImage(int width, int height, MemoryBuffer<byte> buffer0, MemoryBuffer<byte> buffer1)
         {
             conwayKernel(buffer0.Extent / 3, buffer0.View, buffer1.View, width, height);
 
             cuda.Synchronize();
 
-            buffer1.CopyTo(data, 0, 0, buffer1.Length);
+            buffer1.CopyTo(output, 0, 0, buffer1.Length);
         }
 
-        public void generateConwayImageCPU(ref byte[] data, int width, int height, MemoryBuffer<byte> buffer0, MemoryBuffer<byte> buffer1)
+        public void generateConwayImageCPU(int width, int height, MemoryBuffer<byte> buffer0, MemoryBuffer<byte> buffer1)
         {
             conwayKernelCPU(buffer0.Extent / 3, buffer0.View, buffer1.View, width, height);
 
             cpu.Synchronize();
 
-            buffer1.CopyTo(data, 0, 0, buffer1.Length);
+            buffer1.CopyTo(output, 0, 0, buffer1.Length);
         }
 
         private static void RenderKernel(Index1 index, ArrayView<int> data, int width, int height)

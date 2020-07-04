@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:GPURayTracer"
         mc:Ignorable="d"
         Title="MainWindow" WindowStyle="SingleBorderWindow" WindowState="Maximized" Height="720" Width="1280" Background="Black" MouseMove="Window_MouseMove" MouseLeftButtonDown="Frame_MouseDown">
-    <Grid>
+    <Grid Name="grid">
         <Grid.RowDefinitions>
             <RowDefinition Height="4*"/>
             <RowDefinition Height="0"/>

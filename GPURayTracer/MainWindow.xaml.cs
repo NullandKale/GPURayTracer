@@ -26,9 +26,9 @@ namespace GPURayTracer
     {
         public RayTracer rtRenderer;
 
-        public int width = 1920;
-        public int height = 1080;
-        public int targetFPS = 255;
+        public int width;
+        public int height;
+        public int targetFPS = 240;
 
         public FrameManager frame;
         public bool readyForUpdate = false;
@@ -38,20 +38,41 @@ namespace GPURayTracer
         public MainWindow()
         {
             InitializeComponent();
+            Closed += MainWindow_Closed; 
+            SizeChanged += Window_SizeChanged;
+        }
 
+        private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            height = (int)grid.ActualHeight;
+            width = (int)grid.ActualWidth;
+            restartRenderer();
+        }
+
+        public void restartRenderer()
+        {
             frame = new FrameManager(onImage, width, height);
             Frame.Source = frame.wBitmap;
             displayTimer = new UpdateStatsTimer();
 
-            rtRenderer = new RayTracer();
-            rtRenderer.startThread(frame, width, height, targetFPS);
+            if (rtRenderer != null)
+            {
+                rtRenderer.JoinRenderThread();
+            }
+            else
+            {
+                rtRenderer = new RayTracer();
+            }
 
-            Closed += MainWindow_Closed;
+            rtRenderer.startThread(frame, width, height, targetFPS);
         }
 
         private void MainWindow_Closed(object sender, EventArgs e)
         {
-            rtRenderer.dispose();
+            if (rtRenderer != null)
+            {
+                rtRenderer.dispose();
+            }
         }
 
         private void onImage()
@@ -98,7 +119,10 @@ namespace GPURayTracer
                     {
                         int x = (int)((p.X / frameWidth) * width) + i;
                         int y = (int)((p.Y / frameHeight) * height) + j;
-                        rtRenderer.output[(((y - 1) * width) + (x - 1)) * 3] = 255;
+                        if (x > 0 && y > 0 && x < width && y < height)
+                        {
+                            rtRenderer.output[(((y - 1) * width) + (x - 1)) * 3] = 255;
+                        }
                     }
                 }
             }
@@ -111,7 +135,6 @@ namespace GPURayTracer
             if(e.LeftButton == MouseButtonState.Pressed)
             {
                 rtRenderer.pause = true;
-                Thread.Sleep(1);
                 Point p = e.GetPosition(Frame);
                 double frameWidth = Frame.ActualWidth;
                 double frameHeight = Frame.ActualHeight;
