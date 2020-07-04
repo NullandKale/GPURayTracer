@@ -2,6 +2,7 @@
 using GPURayTracer.Utils;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -28,7 +29,8 @@ namespace GPURayTracer
 
         public int width;
         public int height;
-        public int targetFPS = 240;
+        public double scale = 1;
+        public int targetFPS = 2400;
 
         public FrameManager frame;
         public bool readyForUpdate = false;
@@ -38,14 +40,24 @@ namespace GPURayTracer
         public MainWindow()
         {
             InitializeComponent();
-            Closed += MainWindow_Closed; 
+            Closed += MainWindow_Closed;
             SizeChanged += Window_SizeChanged;
         }
 
         private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            height = (int)grid.ActualHeight;
-            width = (int)grid.ActualWidth;
+            if (scale > 0)
+            {
+                height = (int)(grid.ActualHeight * scale);
+                width = (int)(grid.ActualWidth * scale);
+            }
+            else
+            {
+                height = (int)(grid.ActualHeight / -scale);
+                width = (int)(grid.ActualWidth / -scale);
+            }
+
+            Trace.WriteLine("X: " + width + " Y: " + height);
             restartRenderer();
         }
 
@@ -77,11 +89,11 @@ namespace GPURayTracer
 
         private void onImage()
         {
-            if(!readyForUpdate)
+            if (!readyForUpdate)
             {
                 readyForUpdate = true;
 
-                if(Application.Current != null && Application.Current.Dispatcher != null)
+                if (Application.Current != null && Application.Current.Dispatcher != null)
                 {
                     Application.Current.Dispatcher.BeginInvoke(updateFrame);
                 }
@@ -90,7 +102,7 @@ namespace GPURayTracer
 
         public void updateFrame()
         {
-            if(readyForUpdate)
+            if (readyForUpdate)
             {
                 displayTimer.endUpdate();
                 displayTimer.startUpdate();
@@ -113,15 +125,20 @@ namespace GPURayTracer
             {
                 int size = 50;
 
-                for(int i = -size; i <= size; i++)
+                for (int i = -size; i <= size; i++)
                 {
-                    for (int j = -size; j <= size; j++)
+                    int x = (int)((p.X / frameWidth) * width) + i;
+                    if (x > 0 && x < width)
                     {
-                        int x = (int)((p.X / frameWidth) * width) + i;
-                        int y = (int)((p.Y / frameHeight) * height) + j;
-                        if (x > 0 && y > 0 && x < width && y < height)
+                        for (int j = -size; j <= size; j++)
                         {
-                            rtRenderer.output[(((y - 1) * width) + (x - 1)) * 3] = 255;
+                            int y = (int)((p.Y / frameHeight) * height) + j;
+                            if (y > 0 && y < height)
+                            {
+                                rtRenderer.output[(((y - 1) * width) + (x - 1)) * 3] = 255;
+                                rtRenderer.output[((((y - 1) * width) + (x - 1)) * 3) + 1] = 0;
+                                rtRenderer.output[((((y - 1) * width) + (x - 1)) * 3) + 2] = 0;
+                            }
                         }
                     }
                 }
@@ -132,7 +149,7 @@ namespace GPURayTracer
 
         private void Window_MouseMove(object sender, MouseEventArgs e)
         {
-            if(e.LeftButton == MouseButtonState.Pressed)
+            if (e.LeftButton == MouseButtonState.Pressed)
             {
                 rtRenderer.pause = true;
                 Point p = e.GetPosition(Frame);
@@ -145,21 +162,44 @@ namespace GPURayTracer
 
                     for (int i = -size; i <= size; i++)
                     {
-                        for (int j = -size; j <= size; j++)
+                        int x = (int)((p.X / frameWidth) * width) + i;
+                        if (x > 0 && x < width)
                         {
-                            int x = (int)((p.X / frameWidth) * width) + i;
-                            int y = (int)((p.Y / frameHeight) * height) + j;
-                            if (x > 0 && y > 0 && x < width && y < height)
+                            for (int j = -size; j <= size; j++)
                             {
-                                rtRenderer.output[(((y - 1) * width) + (x - 1)) * 3] = 255;
-                                rtRenderer.output[((((y - 1) * width) + (x - 1)) * 3) + 1] = 0;
-                                rtRenderer.output[((((y - 1) * width) + (x - 1)) * 3) + 2] = 0;
+                                int y = (int)((p.Y / frameHeight) * height) + j;
+                                if (y > 0 && y < height)
+                                {
+                                    rtRenderer.output[(((y - 1) * width) + (x - 1)) * 3] = 255;
+                                    rtRenderer.output[((((y - 1) * width) + (x - 1)) * 3) + 1] = 0;
+                                    rtRenderer.output[((((y - 1) * width) + (x - 1)) * 3) + 2] = 0;
+                                }
                             }
                         }
                     }
                 }
 
                 rtRenderer.pause = false;
+            }
+        }
+
+        private void Window_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.O)
+            {
+                if (WindowStyle == WindowStyle.SingleBorderWindow)
+                {
+                    WindowState = WindowState.Normal;
+                    WindowStyle = WindowStyle.None;
+                    WindowState = WindowState.Maximized;
+                }
+                else
+                {
+                    WindowStyle = WindowStyle.SingleBorderWindow;
+                    WindowState = WindowState.Normal;
+                }
+
+                Window_SizeChanged(sender, null);
             }
         }
     }

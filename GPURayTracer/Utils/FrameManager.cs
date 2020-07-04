@@ -14,6 +14,7 @@ namespace GPURayTracer.Utils
         public int width;
         public int height;
         public WriteableBitmap wBitmap;
+        public Int32Rect rect;
         public byte[] data;
 
         public FrameManager(Action onImageUpdate, int width, int height)
@@ -24,6 +25,7 @@ namespace GPURayTracer.Utils
             data = new byte[width * height * 3];
 
             wBitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Rgb24, null);
+            rect = new Int32Rect(0, 0, width, height);
         }
 
         public void write(ref byte[] data)
@@ -34,22 +36,11 @@ namespace GPURayTracer.Utils
 
         public void update()
         {
-            try
-            {
-                wBitmap.Lock();
-
-                unsafe
-                {
-                    IntPtr pBackBuffer = wBitmap.BackBuffer;
-                    Marshal.Copy(data, 0, pBackBuffer, width * height * 3);
-                }
-
-                wBitmap.AddDirtyRect(new Int32Rect(0, 0, width, height));
-            }
-            finally
-            {
-                wBitmap.Unlock();
-            }
+            wBitmap.Lock();
+            IntPtr pBackBuffer = wBitmap.BackBuffer;
+            Marshal.Copy(data, 0, pBackBuffer, data.Length);
+            wBitmap.AddDirtyRect(rect);
+            wBitmap.Unlock();
         }
     }
 }
