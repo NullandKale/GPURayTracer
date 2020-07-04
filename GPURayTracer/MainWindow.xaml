@@ -5,13 +5,13 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GPURayTracer"
         mc:Ignorable="d"
-        Title="MainWindow" WindowStyle="None" WindowState="Maximized" Height="720" Width="1280" Background="Black" KeyDown="Window_KeyDown" MouseMove="Window_MouseMove" MouseLeftButtonDown="Frame_MouseDown">
+        Title="MainWindow" WindowStyle="SingleBorderWindow" WindowState="Normal" Height="720" Width="1280" Background="Black" KeyDown="Window_KeyDown" MouseMove="Window_MouseMove" MouseLeftButtonDown="Frame_MouseDown">
     <Grid Name="grid">
         <Grid.RowDefinitions>
             <RowDefinition Height="4*"/>
             <RowDefinition Height="0"/>
         </Grid.RowDefinitions>
         <Image Name="Frame" Grid.Row="0" Stretch="Uniform" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
-        <Label Name="FPS" Grid.Row="0" Content="" FontSize="24" Foreground="DarkBlue" FontStyle="Oblique" Padding="30"/>
+        <Label Name="FPS" Grid.Row="0" Content="" FontSize="24" Foreground="DarkMagenta" FontStyle="Oblique" Padding="30"/>
     </Grid>
 </Window>

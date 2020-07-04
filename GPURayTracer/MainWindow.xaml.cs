@@ -57,7 +57,9 @@ namespace GPURayTracer
                 width = (int)(grid.ActualWidth / -scale);
             }
 
-            Trace.WriteLine("X: " + width + " Y: " + height);
+            Trace.WriteLine("X: " + width + " " + (width * 3) + " " + ((width * 3) % 4));
+            width += ((width * 3) % 4);
+            Trace.WriteLine("fixed X: " + width + " " + (width * 3) + " " + ((width * 3) % 4));
             restartRenderer();
         }
 
