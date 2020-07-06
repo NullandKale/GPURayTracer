@@ -12,6 +12,6 @@
             <RowDefinition Height="0"/>
         </Grid.RowDefinitions>
         <Image Name="Frame" Grid.Row="0" Stretch="Uniform" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
-        <Label Name="FPS" Grid.Row="0" Content="" FontSize="24" Foreground="Magenta" Padding="30"/>
+        <Label Name="FPS" Grid.Row="0" Content="" FontSize="24" Foreground="White" Padding="30"/>
     </Grid>
 </Window>

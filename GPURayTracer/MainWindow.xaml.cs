@@ -29,8 +29,8 @@ namespace GPURayTracer
 
         public int width;
         public int height;
-        public double scale = -2;
-        public int tickMultiplyer = 50;
+        public double scale = 1;
+        public int tickMultiplyer = 150;
         public int targetFPS = 10000000;
 
         public FrameManager frame;
@@ -109,7 +109,10 @@ namespace GPURayTracer
             {
                 displayTimer.endUpdate();
                 displayTimer.startUpdate();
-                FPS.Content = (int)(rtRenderer.rFPStimer.averageUpdateRate * (tickMultiplyer + 1)) + " fps " + (int)displayTimer.averageUpdateRate + " dps\nResolution: " + width + " x " + height + "\nTick Mult: " + tickMultiplyer;
+                FPS.Content = (int)(rtRenderer.rFPStimer.averageUpdateRate * (tickMultiplyer + 1)) + " tps " +
+                    (int)displayTimer.averageUpdateRate + " dps\nResolution: " + width + " x " + height +
+                    "\nArrow left / right. Tick Mult: " + tickMultiplyer +
+                    "\nArrow up / down. Res Scale: " + scale;
                 frame.update();
                 readyForUpdate = false;
             }

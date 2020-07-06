@@ -134,7 +134,7 @@ namespace GPURayTracer.Rendering
                     generateConwayImage(width, height, buffer0, buffer1, true);
                     
                     frame.write(ref output);
-                    rFPStimer.endUpdateForTargetUpdateTime((1000.0 / targetFPS), true);
+                    rFPStimer.endUpdateForTargetUpdateTime((1000.0 / targetFPS), false);
                     ready = true;
                 }
             }
@@ -203,9 +203,10 @@ namespace GPURayTracer.Rendering
         {
             conwayKernel(buffer0.Extent / 3, buffer0.View, buffer1.View, width, height);
 
-            if(setoutput)
+            cuda.Synchronize();
+
+            if (setoutput)
             {
-                cuda.Synchronize();
                 buffer1.CopyTo(output, 0, 0, buffer1.Length);
             }
         }
