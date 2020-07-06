@@ -29,8 +29,9 @@ namespace GPURayTracer
 
         public int width;
         public int height;
-        public double scale = 1;
-        public int targetFPS = 2400;
+        public double scale = -2;
+        public int tickMultiplyer = 50;
+        public int targetFPS = 10000000;
 
         public FrameManager frame;
         public bool readyForUpdate = false;
@@ -78,7 +79,7 @@ namespace GPURayTracer
                 rtRenderer = new RayTracer();
             }
 
-            rtRenderer.startThread(frame, width, height, targetFPS);
+            rtRenderer.startConwayThread(frame, width, height, 75, targetFPS, tickMultiplyer);
         }
 
         private void MainWindow_Closed(object sender, EventArgs e)
@@ -108,7 +109,7 @@ namespace GPURayTracer
             {
                 displayTimer.endUpdate();
                 displayTimer.startUpdate();
-                FPS.Content = (int)rtRenderer.rFPStimer.averageUpdateRate + " fps " + (int)displayTimer.averageUpdateRate + " dps";
+                FPS.Content = (int)(rtRenderer.rFPStimer.averageUpdateRate * (tickMultiplyer + 1)) + " fps " + (int)displayTimer.averageUpdateRate + " dps\nResolution: " + width + " x " + height + "\nTick Mult: " + tickMultiplyer;
                 frame.update();
                 readyForUpdate = false;
             }
@@ -125,7 +126,7 @@ namespace GPURayTracer
 
             if (p.X > 0 && p.Y > 0 && p.X < frameWidth && p.Y < frameWidth)
             {
-                int size = 50;
+                int size = (int)(width * 0.025);
 
                 for (int i = -size; i <= size; i++)
                 {
@@ -151,57 +152,107 @@ namespace GPURayTracer
 
         private void Window_MouseMove(object sender, MouseEventArgs e)
         {
-            if (e.LeftButton == MouseButtonState.Pressed)
+            if(rtRenderer != null)
             {
-                rtRenderer.pause = true;
-                Point p = e.GetPosition(Frame);
-                double frameWidth = Frame.ActualWidth;
-                double frameHeight = Frame.ActualHeight;
-
-                if (p.X > 0 && p.Y > 0 && p.X < frameWidth && p.Y < frameHeight)
+                if (e.LeftButton == MouseButtonState.Pressed)
                 {
-                    int size = 50;
+                    rtRenderer.pause = true;
+                    Point p = e.GetPosition(Frame);
+                    double frameWidth = Frame.ActualWidth;
+                    double frameHeight = Frame.ActualHeight;
 
-                    for (int i = -size; i <= size; i++)
+                    if (p.X > 0 && p.Y > 0 && p.X < frameWidth && p.Y < frameHeight)
                     {
-                        int x = (int)((p.X / frameWidth) * width) + i;
-                        if (x > 0 && x < width)
+                        int size = (int)(width * 0.025);
+
+                        for (int i = -size; i <= size; i++)
                         {
-                            for (int j = -size; j <= size; j++)
+                            int x = (int)((p.X / frameWidth) * width) + i;
+                            if (x > 0 && x < width)
                             {
-                                int y = (int)((p.Y / frameHeight) * height) + j;
-                                if (y > 0 && y < height)
+                                for (int j = -size; j <= size; j++)
                                 {
-                                    rtRenderer.output[(((y - 1) * width) + (x - 1)) * 3] = 255;
-                                    rtRenderer.output[((((y - 1) * width) + (x - 1)) * 3) + 1] = 0;
-                                    rtRenderer.output[((((y - 1) * width) + (x - 1)) * 3) + 2] = 0;
+                                    int y = (int)((p.Y / frameHeight) * height) + j;
+                                    if (y > 0 && y < height)
+                                    {
+                                        rtRenderer.output[(((y - 1) * width) + (x - 1)) * 3] = 255;
+                                        rtRenderer.output[((((y - 1) * width) + (x - 1)) * 3) + 1] = 0;
+                                        rtRenderer.output[((((y - 1) * width) + (x - 1)) * 3) + 2] = 0;
+                                    }
                                 }
                             }
                         }
                     }
-                }
 
-                rtRenderer.pause = false;
+                    rtRenderer.pause = false;
+                }
             }
         }
 
         private void Window_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.O)
+            if(rtRenderer != null)
             {
-                if (WindowStyle == WindowStyle.SingleBorderWindow)
+                if (e.Key == Key.O)
                 {
-                    WindowState = WindowState.Normal;
-                    WindowStyle = WindowStyle.None;
-                    WindowState = WindowState.Maximized;
-                }
-                else
-                {
-                    WindowStyle = WindowStyle.SingleBorderWindow;
-                    WindowState = WindowState.Normal;
+                    if (WindowStyle == WindowStyle.SingleBorderWindow)
+                    {
+                        WindowState = WindowState.Normal;
+                        WindowStyle = WindowStyle.None;
+                        WindowState = WindowState.Maximized;
+                    }
+                    else
+                    {
+                        WindowStyle = WindowStyle.SingleBorderWindow;
+                        WindowState = WindowState.Normal;
+                    }
+
+                    Window_SizeChanged(sender, null);
                 }
 
-                Window_SizeChanged(sender, null);
+                if(e.Key == Key.Up)
+                {
+                    scale++;
+                    if (scale == 0)
+                    {
+                        scale = 1;
+                    }
+                    Window_SizeChanged(sender, null);
+                }
+
+                if (e.Key == Key.Down)
+                {
+                    scale--;
+                    if (scale == 0)
+                    {
+                        scale = -1;
+                    }
+                    Window_SizeChanged(sender, null);
+                }
+
+                if (e.Key == Key.Right)
+                {
+                    if(tickMultiplyer < 200)
+                    {
+                        tickMultiplyer += 5;
+                        if (tickMultiplyer == 0)
+                        {
+                            tickMultiplyer = 1;
+                        }
+                        Window_SizeChanged(sender, null);
+                    }
+
+                }
+
+                if (e.Key == Key.Left)
+                {
+                    tickMultiplyer -= 5;
+                    if (tickMultiplyer <= 0)
+                    {
+                        tickMultiplyer = 0;
+                    }
+                    Window_SizeChanged(sender, null);
+                }
             }
         }
     }

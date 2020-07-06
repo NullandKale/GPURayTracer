@@ -1,12 +1,14 @@
 ﻿using GPURayTracer.Utils;
 using ILGPU;
 using ILGPU.Algorithms;
+using ILGPU.IR.Types;
 using ILGPU.Runtime;
 using ILGPU.Runtime.CPU;
 using ILGPU.Runtime.Cuda;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.Text;
 using System.Threading;
 
@@ -32,6 +34,7 @@ namespace GPURayTracer.Rendering
         int width;
         int height;
         int targetFPS;
+        int tickMultiplyer;
 
         public UpdateStatsTimer rFPStimer;
 
@@ -45,20 +48,39 @@ namespace GPURayTracer.Rendering
             conwayKernelCPU = cpu.LoadAutoGroupedStreamKernel<Index1, ArrayView<byte>, ArrayView<byte>, int, int>(ConwayKernel);
         }
 
-        public void startThread(FrameManager frameManager, int width, int height, int targetFPS)
+        public void startConwayThread(FrameManager frameManager, int width, int height, int percentFilled, int targetFPS, int tickMultiplyer)
         {
             this.width = width;
             this.height = height;
             this.targetFPS = targetFPS;
+            this.tickMultiplyer = tickMultiplyer;
             run = true;
             frame = frameManager;
-            output = generateRandom(width * height * 3);
+            output = generateRandom(width * height * 3, percentFilled);
+            //output = generateFromImage(width, height, "troy.jpg");
             rFPStimer = new UpdateStatsTimer();
 
             t = new Thread(runConway);
             t.IsBackground = true;
             t.Start();
         }
+
+        public void startNoiseThread(FrameManager frameManager, int width, int height, int targetFPS)
+        {
+            this.width = width;
+            this.height = height;
+            this.targetFPS = targetFPS;
+            run = true;
+            frame = frameManager;
+            output = generateRandom(width * height * 3, 20);
+            //output = generateFromImage(width, height, "troy.jpg");
+            rFPStimer = new UpdateStatsTimer();
+
+            t = new Thread(runConway);
+            t.IsBackground = true;
+            t.Start();
+        }
+
 
         public void waitForReady()
         {
@@ -103,7 +125,13 @@ namespace GPURayTracer.Rendering
                     rFPStimer.startUpdate();
                     buffer0.CopyFrom(output, 0, 0, output.Length);
 
-                    generateConwayImage(width, height, buffer0, buffer1);
+                    for(int i = 0; i < 100; i+=2)
+                    {
+                        generateConwayImage(width, height, buffer0, buffer1, false);
+                        generateConwayImage(width, height, buffer1, buffer0, false);
+                    }
+
+                    generateConwayImage(width, height, buffer0, buffer1, true);
                     
                     frame.write(ref output);
                     rFPStimer.endUpdateForTargetUpdateTime((1000.0 / targetFPS), true);
@@ -115,14 +143,45 @@ namespace GPURayTracer.Rendering
             buffer1.Dispose();
         }
 
-        private byte[] generateRandom(int count)
+        private byte[] generateRandom(int count, int percent)
         {
             Random rng = new Random();
             byte[] data = new byte[count];
 
             for (int i = 0; i < count; i += 3)
             {
-                data[i] = (byte)(rng.Next(0, 101) > 30 ? 255 : 0);
+                data[i] = (byte)(rng.Next(0, 101) > percent ? 255 : 0);
+            }
+
+            return data;
+        }
+
+        private byte[] generateFromImage(int width, int height, string image)
+        {
+            Random rng = new Random();
+            byte[] data = new byte[width * height * 3];
+            Bitmap b = (Bitmap)Bitmap.FromFile(image);
+
+            for (int i = 0; i < width; i++)
+            {
+                for (int j = 0; j < height; j++)
+                {
+                    int index = (j * width) + i;
+
+                    if(i > 0 && i < b.Width && j > 0 && j < b.Height)
+                    {
+                        Color c = b.GetPixel(i, j);
+                        data[(index * 3)    ] = c.R;
+                        data[(index * 3) + 1] = c.G;
+                        data[(index * 3) + 2] = c.B;
+                    }
+                    else
+                    {
+                        data[(index * 3)    ] = (byte)(rng.Next(0, 101) > 20 ? 255 : 0);
+                        data[(index * 3) + 1] = (byte)(rng.Next(0, 101) > 20 ? 255 : 0);
+                        data[(index * 3) + 2] = (byte)(rng.Next(0, 101) > 20 ? 255 : 0);
+                    }
+                }
             }
 
             return data;
@@ -140,13 +199,15 @@ namespace GPURayTracer.Rendering
             }
         }
 
-        public void generateConwayImage(int width, int height, MemoryBuffer<byte> buffer0, MemoryBuffer<byte> buffer1)
+        public void generateConwayImage(int width, int height, MemoryBuffer<byte> buffer0, MemoryBuffer<byte> buffer1, bool setoutput)
         {
             conwayKernel(buffer0.Extent / 3, buffer0.View, buffer1.View, width, height);
 
-            cuda.Synchronize();
-
-            buffer1.CopyTo(output, 0, 0, buffer1.Length);
+            if(setoutput)
+            {
+                cuda.Synchronize();
+                buffer1.CopyTo(output, 0, 0, buffer1.Length);
+            }
         }
 
         public void generateConwayImageCPU(int width, int height, MemoryBuffer<byte> buffer0, MemoryBuffer<byte> buffer1)
@@ -205,17 +266,19 @@ namespace GPURayTracer.Rendering
                 int n7 = data0[((( y + 1) * width) + (x + 1)) * 3];
                 int neighborCount = (n0 + n1 + n2 + n3 + n4 + n5 + n6 + n7) / 255;
 
-                if (isFilled && neighborCount <= 1)
+                if(isFilled)
                 {
-                    newState = false;
-                }
+                    if (neighborCount <= 1)
+                    {
+                        newState = false;
+                    }
 
-                if (isFilled && neighborCount > 3)
-                {
-                    newState = false;
+                    if (neighborCount > 3)
+                    {
+                        newState = false;
+                    }
                 }
-
-                if (!isFilled && neighborCount == 3)
+                else if(neighborCount == 3)
                 {
                     newState = true;
                 }
@@ -223,14 +286,35 @@ namespace GPURayTracer.Rendering
                 if (newState)
                 {
                     data1[(index * 3)] = 255;
-                    data1[(index * 3) + 1] = (byte)(data0[index * 3 + 1] + 1);
-                    data1[(index * 3) + 2] = (byte)(data0[index * 3 + 2] + 1);
+                    if (isFilled)
+                    {
+                        if (data0[index * 3 + 1] == 255)
+                        {
+                            data1[index * 3 + 1] = 255;
+                        }
+                        else
+                        {
+                            data1[(index * 3) + 1] = (byte)(data0[index * 3 + 1] + 1);
+                        }
+                    }
+
+                    if (data0[index * 3 + 2] == 255)
+                    {
+                        data1[index * 3 + 2] = 255;
+                    }
+                    else
+                    {
+                        data1[(index * 3) + 2] = (byte)(data0[index * 3 + 2] + 1);
+                    }
                 }
                 else
                 {
                     data1[(index * 3)] = 0;
-                    data1[(index * 3) + 1] = 0;
-                    if(data0[index * 3 + 2] > 50)
+                    if (data0[index * 3 + 1] > 10)
+                    {
+                        data1[(index * 3) + 1] = (byte)(data0[index * 3 + 1] - 1);
+                    }
+                    if (data0[index * 3 + 2] > 180)
                     {
                         data1[(index * 3) + 2] = (byte)(data0[index * 3 + 2] - 1);
                     }
