@@ -15,7 +15,7 @@ namespace GPURayTracer.Rendering
             this.b = b;
         }
 
-        public Vec3 pointAtParameter(double t)
+        public Vec3 pointAtParameter(float t)
         {
             return a + (t * b);
         }

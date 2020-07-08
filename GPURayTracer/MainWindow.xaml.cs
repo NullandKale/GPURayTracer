@@ -29,9 +29,8 @@ namespace GPURayTracer
 
         public int width;
         public int height;
-        public double scale = 1;
-        public int tickMultiplyer = 150;
-        public int targetFPS = 10000000;
+        public double scale = -4;
+        public int targetFPS = 60;
 
         public FrameManager frame;
         public bool readyForUpdate = false;
@@ -79,7 +78,7 @@ namespace GPURayTracer
                 rtRenderer = new RayTracer();
             }
 
-            rtRenderer.startConwayThread(frame, width, height, 75, targetFPS, tickMultiplyer);
+            rtRenderer.startRenderThread(frame, width, height, targetFPS);
         }
 
         private void MainWindow_Closed(object sender, EventArgs e)
@@ -109,9 +108,8 @@ namespace GPURayTracer
             {
                 displayTimer.endUpdate();
                 displayTimer.startUpdate();
-                FPS.Content = (int)(rtRenderer.rFPStimer.averageUpdateRate * (tickMultiplyer + 1)) + " tps " +
+                FPS.Content = (int)(rtRenderer.rFPStimer.averageUpdateRate) + " tps " +
                     (int)displayTimer.averageUpdateRate + " dps\nResolution: " + width + " x " + height +
-                    "\nArrow left / right. Tick Mult: " + tickMultiplyer +
                     "\nArrow up / down. Res Scale: " + scale;
                 frame.update();
                 readyForUpdate = false;
@@ -229,30 +227,6 @@ namespace GPURayTracer
                     if (scale == 0)
                     {
                         scale = -1;
-                    }
-                    Window_SizeChanged(sender, null);
-                }
-
-                if (e.Key == Key.Right)
-                {
-                    if(tickMultiplyer < 200)
-                    {
-                        tickMultiplyer += 5;
-                        if (tickMultiplyer == 0)
-                        {
-                            tickMultiplyer = 1;
-                        }
-                        Window_SizeChanged(sender, null);
-                    }
-
-                }
-
-                if (e.Key == Key.Left)
-                {
-                    tickMultiplyer -= 5;
-                    if (tickMultiplyer <= 0)
-                    {
-                        tickMultiplyer = 0;
                     }
                     Window_SizeChanged(sender, null);
                 }

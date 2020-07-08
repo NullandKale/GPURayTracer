@@ -1,16 +1,19 @@
-﻿using GPURayTracer.Utils;
+﻿using GPURayTracer.Rendering.Primitives;
+using GPURayTracer.Utils;
 using ILGPU;
 using ILGPU.Algorithms;
 using ILGPU.IR.Types;
 using ILGPU.Runtime;
 using ILGPU.Runtime.CPU;
 using ILGPU.Runtime.Cuda;
+using ILGPU.Runtime.OpenCL;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Text;
 using System.Threading;
+using System.Windows.Input;
 
 namespace GPURayTracer.Rendering
 {
@@ -22,66 +25,75 @@ namespace GPURayTracer.Rendering
 
         private Thread t;
         public Context context;
-        public CudaAccelerator cuda;
-        public CPUAccelerator cpu;
+        public Accelerator device;
 
-        Action<Index1, ArrayView<int>, int, int> renderKernel;
-        Action<Index1, ArrayView<byte>, ArrayView<byte>, int, int> conwayKernel;
-        Action<Index1, ArrayView<byte>, ArrayView<byte>, int, int> conwayKernelCPU;
+        Action<Index1, ArrayView<float>, ArrayView<MaterialData>, ArrayView<Sphere>, ArrayView<Light>, Camera> renderKernel;
+        Action<Index1, ArrayView<float>, ArrayView<byte>, Camera> outputKernel;
 
         public byte[] output;
         FrameManager frame;
-        int width;
-        int height;
+
+        FrameData frameData;
+        WorldData worldData;
+
         int targetFPS;
-        int tickMultiplyer;
 
         public UpdateStatsTimer rFPStimer;
 
         public RayTracer()
         {
             context = new Context();
-            cuda = new CudaAccelerator(context);
-            cpu = new CPUAccelerator(context);
-            renderKernel = cuda.LoadAutoGroupedStreamKernel<Index1, ArrayView<int>, int, int>(RenderKernel);
-            conwayKernel = cuda.LoadAutoGroupedStreamKernel<Index1, ArrayView<byte>, ArrayView<byte>, int, int>(ConwayKernel);
-            conwayKernelCPU = cpu.LoadAutoGroupedStreamKernel<Index1, ArrayView<byte>, ArrayView<byte>, int, int>(ConwayKernel);
+            context.EnableAlgorithms();
+            initBestDevice(true);
+
+            renderKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<MaterialData>, ArrayView<Sphere>, ArrayView<Light>, Camera>(RenderKernel);
+            outputKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<byte>, Camera>(CreatBitmap);
         }
 
-        public void startConwayThread(FrameManager frameManager, int width, int height, int percentFilled, int targetFPS, int tickMultiplyer)
+        private void initBestDevice(bool forceCPU)
         {
-            this.width = width;
-            this.height = height;
+            if(!forceCPU)
+            {
+                var cudaAccelerators = CudaAccelerator.CudaAccelerators;
+                var supportedCLAccelerators = CLAccelerator.CLAccelerators;
+
+                if (cudaAccelerators.Length > 0)
+                {
+                    device = new CudaAccelerator(context);
+                }
+                else if (supportedCLAccelerators.Length > 0)
+                {
+                    device = new CLAccelerator(context, supportedCLAccelerators[0]);
+                }
+                else
+                {
+                    device = new CPUAccelerator(context);
+                }
+            }
+            else
+            {
+                device = new CPUAccelerator(context);
+            }
+        }
+
+        public void startRenderThread(FrameManager frameManager, int width, int height, int targetFPS)
+        {
+            frameData = new FrameData(device, width, height);
+            worldData = new WorldData(device);
+
             this.targetFPS = targetFPS;
-            this.tickMultiplyer = tickMultiplyer;
+
             run = true;
             frame = frameManager;
-            output = generateRandom(width * height * 3, percentFilled);
-            //output = generateFromImage(width, height, "troy.jpg");
+
+            output = new byte[width * height * 3];
+
             rFPStimer = new UpdateStatsTimer();
 
-            t = new Thread(runConway);
+            t = new Thread(renderThreadMain);
             t.IsBackground = true;
             t.Start();
         }
-
-        public void startNoiseThread(FrameManager frameManager, int width, int height, int targetFPS)
-        {
-            this.width = width;
-            this.height = height;
-            this.targetFPS = targetFPS;
-            run = true;
-            frame = frameManager;
-            output = generateRandom(width * height * 3, 20);
-            //output = generateFromImage(width, height, "troy.jpg");
-            rFPStimer = new UpdateStatsTimer();
-
-            t = new Thread(runConway);
-            t.IsBackground = true;
-            t.Start();
-        }
-
-
         public void waitForReady()
         {
             for(int i = 0; i < 100; i++)
@@ -104,18 +116,14 @@ namespace GPURayTracer.Rendering
         public void dispose()
         {
             JoinRenderThread();
-            cpu.Dispose();
-            cuda.Dispose();
+            device.Dispose();
             context.Dispose();
         }
-        private void runConway()
+        private void renderThreadMain()
         {
-            MemoryBuffer<byte> buffer0 = cuda.Allocate<byte>(width * height * 3);
-            MemoryBuffer<byte> buffer1 = cuda.Allocate<byte>(width * height * 3);
-
             while (run)
             {
-                if(pause)
+                if (pause)
                 {
                     ready = true;
                 }
@@ -123,205 +131,143 @@ namespace GPURayTracer.Rendering
                 {
                     ready = false;
                     rFPStimer.startUpdate();
-                    buffer0.CopyFrom(output, 0, 0, output.Length);
 
-                    for(int i = 0; i < 100; i+=2)
-                    {
-                        generateConwayImage(width, height, buffer0, buffer1, false);
-                        generateConwayImage(width, height, buffer1, buffer0, false);
-                    }
+                    generateFrame();
 
-                    generateConwayImage(width, height, buffer0, buffer1, true);
-                    
                     frame.write(ref output);
-                    rFPStimer.endUpdateForTargetUpdateTime((1000.0 / targetFPS), false);
+
+                    rFPStimer.endUpdateForTargetUpdateTime((1000.0 / targetFPS), true);
                     ready = true;
                 }
             }
 
-            buffer0.Dispose();
-            buffer1.Dispose();
         }
 
-        private byte[] generateRandom(int count, int percent)
+        public void generateFrame()
         {
-            Random rng = new Random();
-            byte[] data = new byte[count];
+            renderKernel(frameData.frameBuffer.Extent / 3, frameData.frameBuffer, worldData.getDeviceMaterials(), worldData.getDeviceSpheres(), worldData.getDeviceLights(), frameData.camera);
+            outputKernel(frameData.frameBuffer.Extent / 3, frameData.frameBuffer, frameData.bitmapData, frameData.camera);
 
-            for (int i = 0; i < count; i += 3)
-            {
-                data[i] = (byte)(rng.Next(0, 101) > percent ? 255 : 0);
-            }
+            device.Synchronize();
 
-            return data;
+            frameData.bitmapData.CopyTo(output, 0, 0, frameData.bitmapData.Length);
         }
 
-        private byte[] generateFromImage(int width, int height, string image)
+        public static void CreatBitmap(Index1 index, ArrayView<float> data, ArrayView<byte> bitmapData, Camera camera)
         {
-            Random rng = new Random();
-            byte[] data = new byte[width * height * 3];
-            Bitmap b = (Bitmap)Bitmap.FromFile(image);
+            //FLIP Y
+            //int x = (camera.width - 1) - ((index) % camera.width);
+            int y = (camera.height - 1) - ((index) / camera.width);
 
-            for (int i = 0; i < width; i++)
-            {
-                for (int j = 0; j < height; j++)
-                {
-                    int index = (j * width) + i;
+            //NORMAL X
+            int x = ((index) % camera.width);
+            //int y = ((index) / camera.width);
+            
+            int newIndex = ((y * camera.width) + x);
 
-                    if(i > 0 && i < b.Width && j > 0 && j < b.Height)
-                    {
-                        Color c = b.GetPixel(i, j);
-                        data[(index * 3)    ] = c.R;
-                        data[(index * 3) + 1] = c.G;
-                        data[(index * 3) + 2] = c.B;
-                    }
-                    else
-                    {
-                        data[(index * 3)    ] = (byte)(rng.Next(0, 101) > 20 ? 255 : 0);
-                        data[(index * 3) + 1] = (byte)(rng.Next(0, 101) > 20 ? 255 : 0);
-                        data[(index * 3) + 2] = (byte)(rng.Next(0, 101) > 20 ? 255 : 0);
-                    }
-                }
-            }
-
-            return data;
+            bitmapData[(newIndex * 3)] = (byte)(255.99f * data[(index * 3)]);
+            bitmapData[(newIndex * 3) + 1] = (byte)(255.99f * data[(index * 3) + 1]);
+            bitmapData[(newIndex * 3) + 2] = (byte)(255.99f * data[(index * 3) + 2]);
         }
 
-        public int[] generateImage(int width, int height)
-        {
-            using (MemoryBuffer<int> buffer = cuda.Allocate<int>(width * height * 3))
-            {
-                renderKernel(buffer.Extent / 3, buffer.View, width, height);
-
-                cuda.Synchronize();
-
-                return buffer.GetAsArray();
-            }
-        }
-
-        public void generateConwayImage(int width, int height, MemoryBuffer<byte> buffer0, MemoryBuffer<byte> buffer1, bool setoutput)
-        {
-            conwayKernel(buffer0.Extent / 3, buffer0.View, buffer1.View, width, height);
-
-            cuda.Synchronize();
-
-            if (setoutput)
-            {
-                buffer1.CopyTo(output, 0, 0, buffer1.Length);
-            }
-        }
-
-        public void generateConwayImageCPU(int width, int height, MemoryBuffer<byte> buffer0, MemoryBuffer<byte> buffer1)
-        {
-            conwayKernelCPU(buffer0.Extent / 3, buffer0.View, buffer1.View, width, height);
-
-            cpu.Synchronize();
-
-            buffer1.CopyTo(output, 0, 0, buffer1.Length);
-        }
-
-        private static void RenderKernel(Index1 index, ArrayView<int> data, int width, int height)
+        private static void RenderKernel(Index1 index, ArrayView<float> data, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, ArrayView<Light> lights, Camera camera)
         {
             // color cheatsheet
             //int r = data[(index * 3)];
             //int g = data[(index * 3) + 1];
             //int b = data[(index * 3) + 2];
 
-            int x = ((index) % width);
-            int y = ((index) / width);
+            int x = ((index) % camera.width);
+            int y = ((index) / camera.width);
 
-            float r = (float)x / (float)(width - 1);
-            float g = (float)y / (float)(height - 1);
+            float u = (float)x / (float)(camera.width - 1);
+            float v = ((float)y / (float)(camera.height - 1));
 
-            int ir = (int)(255.99 * r);
-            int ig = (int)(255.99 * g);
-            int ib = (int)(255.99 * 0.25);
+            Vec3 col = ColorRay(camera.GetRay(u,v), materials, spheres, lights, 0, 5);
 
-            data[(index * 3)] = ir;
-            data[(index * 3) + 1] = ig;
-            data[(index * 3) + 2] = ib;
+            data[(index * 3)] = col.x;
+            data[(index * 3) + 1] = col.y;
+            data[(index * 3) + 2] = col.z;
         }
 
-        private static void ConwayKernel(Index1 index, ArrayView<byte> data0, ArrayView<byte> data1, int width, int height)
+        private static HitRecord GetHit(Ray ray, ArrayView<Sphere> spheres, ArrayView<Light> lights)
         {
-            // color cheatsheet
-            //int r = data[(index * 3)];
-            //int g = data[(index * 3) + 1];
-            //int b = data[(index * 3) + 2];
 
-            int x = ((index) % width);
-            int y = ((index) / width);
+            HitRecord closestHit = HitRecord.badHit;
 
-            if (x > 1 && y > 1 && x < width - 1 && y < height - 1)
+            for (int i = 0; i < spheres.Length; i++)
             {
-                bool isFilled = data0[(index * 3)] == 255;
-                bool newState = isFilled;
-
-                int n0 = data0[((( y - 1) * width) + (x - 1)) * 3];
-                int n1 = data0[((  y      * width) + (x - 1)) * 3];
-                int n2 = data0[((( y + 1) * width) + (x - 1)) * 3];
-                int n3 = data0[((( y - 1) * width) +  x)      * 3];
-                int n4 = data0[((( y + 1) * width) +  x)      * 3];
-                int n5 = data0[((( y - 1) * width) + (x + 1)) * 3];
-                int n6 = data0[((  y      * width) + (x + 1)) * 3];
-                int n7 = data0[((( y + 1) * width) + (x + 1)) * 3];
-                int neighborCount = (n0 + n1 + n2 + n3 + n4 + n5 + n6 + n7) / 255;
-
-                if(isFilled)
+                HitRecord rec = Sphere.hit(spheres[i], ray, 0.001f, float.MaxValue, closestHit);
+                if (rec.t != -1)
                 {
-                    if (neighborCount <= 1)
-                    {
-                        newState = false;
-                    }
+                    closestHit = rec;
+                }
+            }
 
-                    if (neighborCount > 3)
-                    {
-                        newState = false;
-                    }
-                }
-                else if(neighborCount == 3)
-                {
-                    newState = true;
-                }
-
-                if (newState)
-                {
-                    data1[(index * 3)] = 255;
-                    if (isFilled)
-                    {
-                        if (data0[index * 3 + 1] == 255)
-                        {
-                            data1[index * 3 + 1] = 255;
-                        }
-                        else
-                        {
-                            data1[(index * 3) + 1] = (byte)(data0[index * 3 + 1] + 1);
-                        }
-                    }
-
-                    if (data0[index * 3 + 2] == 255)
-                    {
-                        data1[index * 3 + 2] = 255;
-                    }
-                    else
-                    {
-                        data1[(index * 3) + 2] = (byte)(data0[index * 3 + 2] + 1);
-                    }
-                }
-                else
-                {
-                    data1[(index * 3)] = 0;
-                    if (data0[index * 3 + 1] > 10)
-                    {
-                        data1[(index * 3) + 1] = (byte)(data0[index * 3 + 1] - 1);
-                    }
-                    if (data0[index * 3 + 2] > 180)
-                    {
-                        data1[(index * 3) + 2] = (byte)(data0[index * 3 + 2] - 1);
-                    }
-                }
+            if (closestHit.t == -1)
+            {
+                return HitRecord.badHit;
+            }
+            else
+            {
+                return closestHit;
             }
         }
 
+        private static Vec3 ColorRay(Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, ArrayView<Light> lights, int depth, int maxDepth)
+        {
+            if(depth > maxDepth)
+            {
+                return new Vec3(1, 1, 1);
+            }
+
+            HitRecord closestHit = GetHit(ray, spheres, lights);
+
+            if (closestHit.t == -1)
+            {
+                return new Vec3();
+            }
+
+            MaterialData material = materials[closestHit.materialID];
+
+            Vec3 reflectDir;
+            Vec3 reflectColor;
+            Vec3 refractDir;
+            Vec3 refractColor;
+
+            reflectDir = Vec3.unitVector(Vec3.reflect(ray.b, closestHit.normal));
+            reflectColor = ColorRay(new Ray(closestHit.p, reflectDir), materials, spheres, lights, depth + 1, maxDepth);
+
+            refractDir = Vec3.refract(ray.b, closestHit.normal, materials[closestHit.materialID].ref_idx);
+
+            if (reflectDir.x != 0 && reflectDir.y != 0 && reflectDir.z != 0)
+            {
+                refractDir = Vec3.unitVector(refractDir);
+            }
+
+            refractColor = ColorRay(new Ray(closestHit.p, refractDir), materials, spheres, lights, depth + 1, maxDepth);
+
+            float diffuseLightIntensity = 0.5f;
+            float specularLightIntensity = 0;
+
+            for (int i = 0; i < lights.Length; i++)
+            {
+                Vec3 lightDir = Vec3.unitVector(lights[i].position - closestHit.p);
+                double lightDist = (lights[i].position - closestHit.p).length();
+                Vec3 shadowOrig = closestHit.p;
+                HitRecord shadowRec = GetHit(new Ray(shadowOrig, lightDir), spheres, lights);
+
+                if (shadowRec.t != -1 && (shadowRec.p - shadowOrig).length() < lightDist)
+                {
+                    continue;
+                }
+
+                diffuseLightIntensity += lights[i].intensity * XMath.Max(0.0f, Vec3.dot(lightDir, closestHit.normal));
+                specularLightIntensity += XMath.Pow(XMath.Max(0.0f, Vec3.dot(-Vec3.reflect(-lightDir, closestHit.normal), ray.b)), material.specularExponent) * lights[i].intensity;
+            }
+
+
+            return material.diffuseColor * diffuseLightIntensity * material.a0 + new Vec3(1, 1, 1) * specularLightIntensity * material.a1 + reflectColor * material.a2 + refractColor * material.a3;
+        }
     }
 }
