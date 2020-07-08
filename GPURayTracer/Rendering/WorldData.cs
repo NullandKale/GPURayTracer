@@ -29,13 +29,15 @@ namespace GPURayTracer.Rendering
             materials = new List<MaterialData>();
             lights = new List<Light>();
 
-            addMaterial(MaterialData.redRubber);
+            addMaterial(MaterialData.whiteRubber);
             addMaterial(MaterialData.mirror);
+            addMaterial(MaterialData.blueRubber);
 
-            addSphere(new Sphere(new Vec3(0, 0, -1), 0.5f, 0));
             addSphere(new Sphere(new Vec3(0, -100.5f, -1), 100, 0));
+            addSphere(new Sphere(new Vec3(1, 0, -1), 0.5f, 1));
+            addSphere(new Sphere(new Vec3(-1, 0, -1), 0.5f, 2));
 
-            addLight(new Light(new Vec3(0, 100, 0), 12));
+            addLight(new Light(new Vec3(0, 100, 0), 1));
         }
 
         public int addMaterial(MaterialData toAdd)

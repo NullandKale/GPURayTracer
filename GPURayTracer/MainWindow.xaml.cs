@@ -29,7 +29,7 @@ namespace GPURayTracer
 
         public int width;
         public int height;
-        public double scale = -4;
+        public double scale = -8;
         public int targetFPS = 60;
 
         public FrameManager frame;
@@ -108,7 +108,7 @@ namespace GPURayTracer
             {
                 displayTimer.endUpdate();
                 displayTimer.startUpdate();
-                FPS.Content = (int)(rtRenderer.rFPStimer.averageUpdateRate) + " tps " +
+                FPS.Content = "Device: " + rtRenderer.device.AcceleratorType.ToString() + " " + (int)(rtRenderer.rFPStimer.averageUpdateRate) + " tps " +
                     (int)displayTimer.averageUpdateRate + " dps\nResolution: " + width + " x " + height +
                     "\nArrow up / down. Res Scale: " + scale;
                 frame.update();

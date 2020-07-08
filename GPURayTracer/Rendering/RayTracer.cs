@@ -44,7 +44,7 @@ namespace GPURayTracer.Rendering
         {
             context = new Context();
             context.EnableAlgorithms();
-            initBestDevice(true);
+            initBestDevice(false);
 
             renderKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<MaterialData>, ArrayView<Sphere>, ArrayView<Light>, Camera>(RenderKernel);
             outputKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<byte>, Camera>(CreatBitmap);
@@ -55,15 +55,10 @@ namespace GPURayTracer.Rendering
             if(!forceCPU)
             {
                 var cudaAccelerators = CudaAccelerator.CudaAccelerators;
-                var supportedCLAccelerators = CLAccelerator.CLAccelerators;
 
                 if (cudaAccelerators.Length > 0)
                 {
                     device = new CudaAccelerator(context);
-                }
-                else if (supportedCLAccelerators.Length > 0)
-                {
-                    device = new CLAccelerator(context, supportedCLAccelerators[0]);
                 }
                 else
                 {
@@ -183,7 +178,7 @@ namespace GPURayTracer.Rendering
             float u = (float)x / (float)(camera.width - 1);
             float v = ((float)y / (float)(camera.height - 1));
 
-            Vec3 col = ColorRay(camera.GetRay(u,v), materials, spheres, lights, 0, 5);
+            Vec3 col = ColorRay(camera.GetRay(u,v), materials, spheres, lights, 0, 1);
 
             data[(index * 3)] = col.x;
             data[(index * 3) + 1] = col.y;
@@ -225,7 +220,7 @@ namespace GPURayTracer.Rendering
 
             if (closestHit.t == -1)
             {
-                return new Vec3();
+                return new Vec3(0, 0, 0);
             }
 
             MaterialData material = materials[closestHit.materialID];
