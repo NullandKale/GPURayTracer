@@ -108,8 +108,8 @@ namespace GPURayTracer
             {
                 displayTimer.endUpdate();
                 displayTimer.startUpdate();
-                FPS.Content = "Device: " + rtRenderer.device.AcceleratorType.ToString() + " " + (int)(rtRenderer.rFPStimer.averageUpdateRate) + " tps " +
-                    (int)displayTimer.averageUpdateRate + " dps\nResolution: " + width + " x " + height +
+                FPS.Content = "Render Device: " + rtRenderer.device.AcceleratorType.ToString() + " @: " + width + " x " + height + "\n" + (int)(rtRenderer.rFPStimer.averageUpdateRate) + " tps " +
+                    (int)displayTimer.averageUpdateRate + " dps"+
                     "\nArrow up / down. Res Scale: " + scale;
                 frame.update();
                 readyForUpdate = false;
@@ -229,6 +229,11 @@ namespace GPURayTracer
                         scale = -1;
                     }
                     Window_SizeChanged(sender, null);
+                }
+
+                if(e.Key ==  Key.Escape)
+                {
+                    Close();
                 }
             }
         }

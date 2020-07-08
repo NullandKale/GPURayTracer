@@ -23,7 +23,7 @@ namespace GPURayTracer.Rendering
         public bool pause = false;
         public bool ready = false;
 
-        private Thread t;
+        private Thread RenderThread;
         public Context context;
         public Accelerator device;
 
@@ -85,9 +85,9 @@ namespace GPURayTracer.Rendering
 
             rFPStimer = new UpdateStatsTimer();
 
-            t = new Thread(renderThreadMain);
-            t.IsBackground = true;
-            t.Start();
+            RenderThread = new Thread(renderThreadMain);
+            RenderThread.IsBackground = true;
+            RenderThread.Start();
         }
         public void waitForReady()
         {
@@ -105,7 +105,7 @@ namespace GPURayTracer.Rendering
         public void JoinRenderThread()
         {
             run = false;
-            t.Join();
+            RenderThread.Join();
         }
 
         public void dispose()
