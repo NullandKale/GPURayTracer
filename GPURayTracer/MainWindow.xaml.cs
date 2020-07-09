@@ -29,7 +29,7 @@ namespace GPURayTracer
 
         public int width;
         public int height;
-        public double scale = -8;
+        public double scale = -2;
         public int targetFPS = 60;
 
         public FrameManager frame;

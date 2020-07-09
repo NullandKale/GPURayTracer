@@ -29,13 +29,20 @@ namespace GPURayTracer.Rendering
             materials = new List<MaterialData>();
             lights = new List<Light>();
 
-            addMaterial(MaterialData.whiteRubber);
-            addMaterial(MaterialData.mirror);
-            addMaterial(MaterialData.blueRubber);
+            addMaterial(MaterialData.makeDiffuse(new Vec3(0.75f, 0.75f, 0.75f)));
+            addMaterial(MaterialData.makeDiffuse(new Vec3(0.75f, 0, 0)));
+            addMaterial(MaterialData.makeDiffuse(new Vec3(0, 0.75f, 0)));
 
-            addSphere(new Sphere(new Vec3(0, -100.5f, -1), 100, 0));
-            addSphere(new Sphere(new Vec3(1, 0, -1), 0.5f, 1));
-            addSphere(new Sphere(new Vec3(-1, 0, -1), 0.5f, 2));
+            //addSphere(new Sphere(new Vec3(1e5f + 1.0f, 40.8f, 81.6f), 1e5f, 1));//left
+            //addSphere(new Sphere(new Vec3(-1e5f + 99.0f, 40.8f, 81.6f), 1e5f, 2));//right
+            //addSphere(new Sphere(new Vec3(50f, 40.8f, 1e5f), 1e5f, 0));//back
+            //addSphere(new Sphere(new Vec3(50f, 40.8f, -1e5f + 170.0f), 1e5f, 0));//front
+            //addSphere(new Sphere(new Vec3(50f, 1e5f, 81.6f), 1e5f, 0));//bottom
+            //addSphere(new Sphere(new Vec3(50f, -1e5f + 81.6f, 81.6f), 1e5f, 0));//top
+
+            addSphere(new Sphere(new Vec3(), 0.25f, 0));
+            addSphere(new Sphere(new Vec3(1, 0, 0), 0.25f, 1));
+            addSphere(new Sphere(new Vec3(-1, 0, 0), 0.25f, 2));
 
             addLight(new Light(new Vec3(0, 100, 0), 1));
         }
