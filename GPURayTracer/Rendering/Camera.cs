@@ -78,6 +78,10 @@ namespace GPURayTracer.Rendering
             this.z = z;
         }
 
+        public Vec3 transform(Vec3 pos)
+        {
+            return x * pos.x + y * pos.y + z * pos.z;
+        }
         public static OrthoNormalBasis fromXY(Vec3 x, Vec3 y)
         {
             Vec3 zz = Vec3.unitVector(Vec3.cross(x, y));
@@ -116,6 +120,21 @@ namespace GPURayTracer.Rendering
         public static OrthoNormalBasis fromZY(Vec3 z, Vec3 y)
         {
             Vec3 xx = Vec3.unitVector(Vec3.cross(y, z));
+            Vec3 yy = Vec3.unitVector(Vec3.cross(z, xx));
+            return new OrthoNormalBasis(xx, yy, z);
+        }
+
+        public static OrthoNormalBasis fromZ(Vec3 z) 
+        {
+            Vec3 xx;
+            if (XMath.Abs(Vec3.dot(z, Vec3.xAxis)) > 0.99999f)
+            {
+                xx = Vec3.unitVector(Vec3.cross(Vec3.yAxis, z));
+            }
+            else
+            {
+                xx = Vec3.unitVector(Vec3.cross(Vec3.xAxis, z));
+            }
             Vec3 yy = Vec3.unitVector(Vec3.cross(z, xx));
             return new OrthoNormalBasis(xx, yy, z);
         }

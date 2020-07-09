@@ -7,6 +7,10 @@ namespace GPURayTracer.Rendering
 {
     public struct Vec3
     {
+        public static readonly Vec3 xAxis = new Vec3(1, 0, 0);
+        public static readonly Vec3 yAxis = new Vec3(0, 1, 0);
+        public static readonly Vec3 zAxis = new Vec3(0, 0, 1);
+
         public float x;
         public float y;
         public float z;
@@ -120,7 +124,6 @@ namespace GPURayTracer.Rendering
             return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
         }
 
-
         public static Vec3 cross(Vec3 v1, Vec3 v2)
         {
             return new Vec3(v1.y * v2.z - v1.z * v2.y,
@@ -135,9 +138,9 @@ namespace GPURayTracer.Rendering
         }
 
 
-        public static Vec3 reflect(Vec3 v, Vec3 n)
+        public static Vec3 reflect(Vec3 normal, Vec3 incomming)
         {
-            return v - 2 * dot(v, n) * n;
+            return unitVector(incomming - normal * 2 * dot(incomming, normal));
         }
 
         public static Vec3 refract(Vec3 v, Vec3 n, float niOverNt)
@@ -152,6 +155,22 @@ namespace GPURayTracer.Rendering
             }
 
             return new Vec3();
+        }
+
+        public static float NormalReflectance(Vec3 normal, Vec3 incomming, float iorFrom, float iorTo)
+        {
+            float iorRatio = iorFrom / iorTo;
+            float cosThetaI = -dot(normal, incomming);
+            float sinThetaTSquared = iorRatio * iorRatio * (1 - cosThetaI * cosThetaI);
+            if(sinThetaTSquared > 1)
+            {
+                return 1f;
+            }
+
+            float cosThetaT = XMath.Sqrt(1 - sinThetaTSquared);
+            float rPerpendicular = (iorFrom * cosThetaI - iorTo * cosThetaT) / (iorFrom * cosThetaI + iorTo * cosThetaT);
+            float rParallel = (iorFrom * cosThetaI - iorTo * cosThetaT) / (iorFrom * cosThetaI + iorTo * cosThetaT);
+            return (rPerpendicular * rPerpendicular + rParallel * rParallel) / 2;
         }
     }
 }

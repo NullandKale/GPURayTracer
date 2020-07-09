@@ -35,12 +35,12 @@ namespace GPURayTracer.Rendering.Primitives
                 float temp = (-b - sqrtdisc) / a;
                 if (temp < tMax && temp > tMin)
                 {
-                    return new HitRecord(temp, r.pointAtParameter(temp), (rec.p - s.center) / s.radius, s.materialIndex);
+                    return new HitRecord(temp, r.pointAtParameter(temp), (rec.p - s.center) / s.radius, r.b, s.materialIndex);
                 }
                 temp = (-b + sqrtdisc) / a;
                 if (temp < tMax && temp > tMin)
                 {
-                    return new HitRecord(temp, r.pointAtParameter(temp), (rec.p - s.center) / s.radius, s.materialIndex);
+                    return new HitRecord(temp, r.pointAtParameter(temp), (rec.p - s.center) / s.radius, r.b, s.materialIndex);
                 }
             }
             return HitRecord.badHit;
