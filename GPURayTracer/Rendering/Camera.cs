@@ -9,6 +9,10 @@ namespace GPURayTracer.Rendering
     {
         public int height;
         public int width;
+        public int superSample;
+        public int maxBounces;
+
+        public bool diffuse;
 
         public Vec3 origin;
         public OrthoNormalBasis axis;
@@ -20,10 +24,13 @@ namespace GPURayTracer.Rendering
         public float apertureRadius;
         public float focalDistance;
 
-        public Camera(Vec3 origin, Vec3 lookAt, Vec3 up, int width, int height, float verticalFov, Vec3 focalPoint, float apertureRadius)
+        public Camera(Vec3 origin, Vec3 lookAt, Vec3 up, int width, int height, int superSample, int maxBounces, float verticalFov, bool diffuseOnly, Vec3 focalPoint, float apertureRadius)
         {
             this.width = width;
             this.height = height;
+            this.superSample = superSample;
+            this.maxBounces = maxBounces;
+            this.diffuse = diffuseOnly;
 
             this.origin = origin;
             axis = OrthoNormalBasis.fromZY(Vec3.unitVector(lookAt - origin), up);
@@ -59,7 +66,7 @@ namespace GPURayTracer.Rendering
             //return Ray::fromTwoPoints(center, focalPoint);
         }
 
-        public Ray GetRay(int x, int y)
+        public Ray GetRay(float x, float y)
         {
             return rayFromUnit(2 * (x * reciprocalWidth) - 1, 2 * (y * reciprocalHeight) - 1);
         }

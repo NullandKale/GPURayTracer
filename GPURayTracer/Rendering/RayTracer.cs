@@ -72,9 +72,9 @@ namespace GPURayTracer.Rendering
             }
         }
 
-        public void startRenderThread(FrameManager frameManager, int width, int height, int targetFPS)
+        public void startRenderThread(FrameManager frameManager, int width, int height, int targetFPS, bool diffuse)
         {
-            frameData = new FrameData(device, width, height);
+            frameData = new FrameData(device, width, height, diffuse);
             worldData = new WorldData(device);
 
             this.targetFPS = targetFPS;
@@ -178,7 +178,17 @@ namespace GPURayTracer.Rendering
 
             XorShift32 rng = new XorShift32((uint)(index + 1));
 
-            Vec3 col = ColorRay(rng, camera.GetRay(x, y), materials, spheres, 3, false);
+            Vec3 col = ColorRay(rng, camera.GetRay(x + 0.5f, y + 0.5f), materials, spheres, camera.maxBounces, camera.diffuse);
+
+            for (int i = 0; i < camera.superSample; i++)
+            {
+                for (int j = 0; j < camera.superSample; j++)
+                {
+                    col += ColorRay(rng, camera.GetRay(x + rng.NextFloat(), y + rng.NextFloat()), materials, spheres, camera.maxBounces, camera.diffuse);
+                }
+            }
+
+            col /= ((camera.superSample * camera.superSample) + 1);
 
             data[(index * 3)] = col.x;
             data[(index * 3) + 1] = col.y;
@@ -229,15 +239,10 @@ namespace GPURayTracer.Rendering
             }
 
             OrthoNormalBasis basis = OrthoNormalBasis.fromZ(hit.normal);
-            Ray reflectRay = new Ray(hit.p, coneSample(Vec3.reflect(ray.b, hit.normal), material.reflectionConeAngleRadians, 0, 0));
+            Ray reflectRay = new Ray(hit.p, coneSample(Vec3.reflect(hit.normal, ray.b), material.reflectionConeAngleRadians, 0, 0));
             Ray diffuseRay = new Ray(hit.p, hemisphereSample(basis, 0, 0));
 
             return new BounceRecord(reflectRay, diffuseRay, reflectivity);
-        }
-
-        private static Vec3 ColorBounce(XorShift32 rng, BounceRecord record)
-        {
-
         }
 
         private static Vec3 ColorRay(XorShift32 rng, Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, int bounceCount, bool debug)
@@ -246,7 +251,7 @@ namespace GPURayTracer.Rendering
 
             if (hit.materialID == -1)
             {
-                return new Vec3();
+                return new Vec3(0.2f, 0.2f, 0.5f);
             }
 
             MaterialData material = materials[hit.materialID];
@@ -278,30 +283,32 @@ namespace GPURayTracer.Rendering
                 return material.diffuseColor;
             }
 
-            Vec3 result = new Vec3();
+            BounceHitRecord firstHitColor;
 
-            if(rng.NextFloat() < reflectivity)
+            if (rng.NextFloat() < reflectivity)
             {
-                result += material.emmissiveColor;
+                firstHitColor = new BounceHitRecord(hit.materialID, true);
             }
             else
             {
-                result += material.emmissiveColor + material.diffuseColor;
+                firstHitColor = new BounceHitRecord(hit.materialID, false);
             }
 
             Ray currentRay = ray;
             HitRecord currentHit = hit;
-            MaterialData currentMaterial = material;
 
-            int totalBounces = 1;
-            
-            for (int i = 0; i < bounceCount; i ++)
+            int totalBounces = 0;
+
+            BounceHitRecord[] records = new BounceHitRecord[bounceCount + 1];
+
+            for (int i = 0; i < bounceCount; i++)
             {
-                BounceRecord currentBounce = Bounce(currentHit, currentRay, currentMaterial);
+                BounceRecord currentBounce = Bounce(currentHit, currentRay, materials[currentHit.materialID]);
 
                 if (rng.NextFloat() < currentBounce.reflectivity)
                 {
                     currentRay = currentBounce.reflectRay;
+                    records[totalBounces].wasReflection = true;
                 }
                 else
                 {
@@ -316,13 +323,43 @@ namespace GPURayTracer.Rendering
                 }
                 else
                 {
+                    records[totalBounces].materialID = currentHit.materialID;
                     totalBounces++;
-                    currentMaterial = materials[currentHit.materialID];
-                    result += currentMaterial.emmissiveColor + currentMaterial.diffuseColor;
+                    if(totalBounces <= bounceCount)
+                    {
+                        records[totalBounces].materialID = -1;
+                    }
                 }
             }
 
-            return result / totalBounces;
+            Vec3 bounceColor = new Vec3();
+
+            for (int i = totalBounces - 1; i >= 0; i--)
+            {
+                if(records[i].materialID != -1)
+                {
+                    material = materials[records[i].materialID];
+                    if (records[i].wasReflection)
+                    {
+                        bounceColor += material.emmissiveColor;
+                    }
+                    else
+                    {
+                        bounceColor = material.emmissiveColor + (material.diffuseColor * bounceColor);
+                    }
+                }
+            }
+
+            material = materials[firstHitColor.materialID];
+
+            if(firstHitColor.wasReflection)
+            {
+                return (material.emmissiveColor + bounceColor) / (totalBounces + 1);
+            }
+            else
+            {
+                return (material.emmissiveColor + (material.diffuseColor * bounceColor)) / (totalBounces + 1);
+            }
         }
 
         private static Vec3 coneSample(Vec3 direction, float coneTheta, float u, float v)
@@ -360,6 +397,17 @@ namespace GPURayTracer.Rendering
             this.reflectRay = reflectRay;
             this.diffuseRay = diffuseRay;
             this.reflectivity = reflectivity;
+        }
+    }
+
+    internal struct BounceHitRecord
+    {
+        public int materialID;
+        public bool wasReflection;
+        public BounceHitRecord(int materialID, bool wasReflection)
+        {
+            this.materialID = materialID;
+            this.wasReflection = wasReflection;
         }
     }
 }

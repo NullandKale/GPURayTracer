@@ -31,6 +31,7 @@ namespace GPURayTracer
         public int height;
         public double scale = -2;
         public int targetFPS = 60;
+        public bool diffuseOnly = false;
 
         public FrameManager frame;
         public bool readyForUpdate = false;
@@ -78,7 +79,7 @@ namespace GPURayTracer
                 rtRenderer = new RayTracer();
             }
 
-            rtRenderer.startRenderThread(frame, width, height, targetFPS);
+            rtRenderer.startRenderThread(frame, width, height, targetFPS, diffuseOnly);
         }
 
         private void MainWindow_Closed(object sender, EventArgs e)
@@ -108,9 +109,10 @@ namespace GPURayTracer
             {
                 displayTimer.endUpdate();
                 displayTimer.startUpdate();
-                FPS.Content = "Render Device: " + rtRenderer.device.AcceleratorType.ToString() + " @: " + width + " x " + height + "\n" + (int)(rtRenderer.rFPStimer.averageUpdateRate) + " tps " +
-                    (int)displayTimer.averageUpdateRate + " dps"+
-                    "\nArrow up / down. Res Scale: " + scale;
+                FPS.Content = "Render Device: " + rtRenderer.device.AcceleratorType.ToString() + " @: " + width + " x " + height +
+                    "\n" + (int)(rtRenderer.rFPStimer.averageUpdateRate) + " tps " + (int)displayTimer.averageUpdateRate + " dps" +
+                    "\nArrow up / down. Res Scale: " + scale + "\n"
+                    + (diffuseOnly ? "DIFFUSE ONLY DEBUG " : "Standard Lighting ") + " D to toggle";
                 frame.update();
                 readyForUpdate = false;
             }
@@ -231,7 +233,13 @@ namespace GPURayTracer
                     Window_SizeChanged(sender, null);
                 }
 
-                if(e.Key ==  Key.Escape)
+                if(e.Key == Key.D)
+                {
+                    diffuseOnly = !diffuseOnly;
+                    Window_SizeChanged(sender, null);
+                }
+
+                if (e.Key ==  Key.Escape)
                 {
                     Close();
                 }
