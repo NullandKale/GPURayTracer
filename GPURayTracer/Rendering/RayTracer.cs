@@ -235,6 +235,11 @@ namespace GPURayTracer.Rendering
             return new BounceRecord(reflectRay, diffuseRay, reflectivity);
         }
 
+        private static Vec3 ColorBounce(XorShift32 rng, BounceRecord record)
+        {
+
+        }
+
         private static Vec3 ColorRay(XorShift32 rng, Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, int bounceCount, bool debug)
         {
             HitRecord hit = GetHit(ray, spheres);

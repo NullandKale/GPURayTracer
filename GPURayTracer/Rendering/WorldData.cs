@@ -25,7 +25,7 @@ namespace GPURayTracer.Rendering
             spheres = new List<Sphere>();
             materials = new List<MaterialData>();
 
-            addMaterial(MaterialData.makeLight(new Vec3(0.5f, 1, 1)));
+            addMaterial(MaterialData.makeLight(new Vec3(8, 8, 8)));
             addSphere(new Sphere(new Vec3(6, 6, -6.2f), 3, 0));
 
             MaterialData sphereMat = MaterialData.makeDiffuse(new Vec3(0.2f, 0.2f, 0.2f));
@@ -36,8 +36,8 @@ namespace GPURayTracer.Rendering
             addSphere(new Sphere(new Vec3(0.5f, 0, 0), 0.25f, 1));
             addSphere(new Sphere(new Vec3(-0.5f, 0, 0), 0.25f, 1));
 
-            //addMaterial(MaterialData.makeDiffuse(new Vec3(0.2f, 0.2f, 0.5f)));
-            //addSphere(new Sphere(new Vec3(), 10, 2));
+            addMaterial(MaterialData.makeDiffuse(new Vec3(0.2f, 0.2f, 0.5f)));
+            addSphere(new Sphere(new Vec3(0, 12, 0), 10, 2));
         }
 
         public int addMaterial(MaterialData toAdd)
