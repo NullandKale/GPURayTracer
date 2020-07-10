@@ -41,14 +41,28 @@ namespace GPURayTracer.Rendering
 
         public UpdateStatsTimer rFPStimer;
 
-        public RayTracer()
+        public RayTracer(FrameManager frameManager, int width, int height, int targetFPS, bool diffuse)
         {
             context = new Context();
             context.EnableAlgorithms();
             initBestDevice(false);
 
-            renderKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<MaterialData>, ArrayView<Sphere>, Camera>(RenderKernel);
+            frameData = new FrameData(device, width, height, diffuse);
+            worldData = new WorldData(device);
+
+            this.targetFPS = targetFPS;
+
+            run = true;
+            frame = frameManager;
+
+            output = new byte[width * height * 3];
+
+            rFPStimer = new UpdateStatsTimer();
+
             outputKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<byte>, Camera>(CreatBitmap);
+            renderKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<MaterialData>, ArrayView<Sphere>, Camera>(RenderKernel);
+
+            startRenderThread();
         }
 
         private void initBestDevice(bool forceCPU)
@@ -72,20 +86,8 @@ namespace GPURayTracer.Rendering
             }
         }
 
-        public void startRenderThread(FrameManager frameManager, int width, int height, int targetFPS, bool diffuse)
+        public void startRenderThread()
         {
-            frameData = new FrameData(device, width, height, diffuse);
-            worldData = new WorldData(device);
-
-            this.targetFPS = targetFPS;
-
-            run = true;
-            frame = frameManager;
-
-            output = new byte[width * height * 3];
-
-            rFPStimer = new UpdateStatsTimer();
-
             RenderThread = new Thread(renderThreadMain);
             RenderThread.IsBackground = true;
             RenderThread.Start();
