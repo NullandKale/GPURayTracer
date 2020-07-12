@@ -28,7 +28,7 @@ namespace GPURayTracer.Rendering
         public Context context;
         public Accelerator device;
 
-        Action<Index1, ArrayView<float>, ArrayView<MaterialData>, ArrayView<Sphere>, Camera> renderKernel;
+        Action<Index1, ArrayView<float>, ArrayView<float>, ArrayView<MaterialData>, ArrayView<Sphere>, Camera> renderKernel;
         Action<Index1, ArrayView<float>, ArrayView<byte>, Camera> outputKernel;
 
         public byte[] output;
@@ -60,7 +60,7 @@ namespace GPURayTracer.Rendering
             rFPStimer = new UpdateStatsTimer();
 
             outputKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<byte>, Camera>(CreatBitmap);
-            renderKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<MaterialData>, ArrayView<Sphere>, Camera>(RenderKernel);
+            renderKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<float>, ArrayView<MaterialData>, ArrayView<Sphere>, Camera>(RenderKernel);
 
             startRenderThread();
         }
@@ -143,7 +143,7 @@ namespace GPURayTracer.Rendering
 
         public void generateFrame()
         {
-            renderKernel(frameData.frameBufferDiffuse.Extent / 3, frameData.frameBufferDiffuse, worldData.getDeviceMaterials(), worldData.getDeviceSpheres(), frameData.camera);
+            renderKernel(frameData.frameBufferDiffuse.Extent / 3, frameData.frameBufferDiffuse, frameData.rngData, worldData.getDeviceMaterials(), worldData.getDeviceSpheres(), frameData.camera);
             outputKernel(frameData.frameBufferDiffuse.Extent / 3, frameData.frameBufferDiffuse, frameData.bitmapData, frameData.camera);
 
             device.Synchronize();
@@ -168,35 +168,35 @@ namespace GPURayTracer.Rendering
             bitmapData[(newIndex * 3) + 2] = (byte)(255.99f * data[(index * 3) + 2]);
         }
 
-        private static void RenderKernel(Index1 index, ArrayView<float> data, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, Camera camera)
+        private static void RenderKernel(Index1 index, ArrayView<float> diffuseFrameData, ArrayView<float> rngData, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, Camera camera)
         {
             // color cheatsheet
             //int r = data[(index * 3)];
             //int g = data[(index * 3) + 1];
             //int b = data[(index * 3) + 2];
 
-            if((index * 3) < data.Length)
+            if((index * 3) < diffuseFrameData.Length)
             {
                 int x = ((index) % camera.width);
                 int y = ((index) / camera.width);
 
                 BounceHitRecord[] records = new BounceHitRecord[25];
 
-                Vec3 col = ColorRay(index, camera.GetRay(x + 0.5f, y + 0.5f), materials, spheres, records, camera);
+                Vec3 col = ColorRay(index, camera.GetRay(x + 0.5f, y + 0.5f), materials, spheres, rngData, records, camera);
 
                 for (int i = 0; i < camera.superSample; i++)
                 {
                     for (int j = 0; j < camera.superSample; j++)
                     {
-                        col += ColorRay(index, camera.GetRay(x + ((float)i / camera.superSample), y + ((float)j / camera.superSample)), materials, spheres, records, camera);
+                        col += ColorRay(index, camera.GetRay(x + ((float)i / camera.superSample), y + ((float)j / camera.superSample)), materials, spheres, rngData, records, camera);
                     }
                 }
 
                 col /= ((camera.superSample * camera.superSample) + 1);
 
-                data[(index * 3)] = col.x;
-                data[(index * 3) + 1] = col.y;
-                data[(index * 3) + 2] = col.z;
+                diffuseFrameData[(index * 3)] = col.x;
+                diffuseFrameData[(index * 3) + 1] = col.y;
+                diffuseFrameData[(index * 3) + 2] = col.z;
             }
         }
 
@@ -250,7 +250,7 @@ namespace GPURayTracer.Rendering
             return new BounceRecord(reflectRay, diffuseRay, reflectivity);
         }
 
-        private static Vec3 ColorRay(int rngStartIndex, Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, BounceHitRecord[] records, Camera camera)
+        private static Vec3 ColorRay(int rngStartIndex, Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, ArrayView<float> rngData, BounceHitRecord[] records, Camera camera)
         {
             HitRecord hit = GetHit(ray, spheres);
 
@@ -290,7 +290,7 @@ namespace GPURayTracer.Rendering
 
             BounceHitRecord firstHitColor;
 
-            if (camera.rngData[rngStartIndex % 1024] < reflectivity)
+            if (getNext(rngData, rngStartIndex) < reflectivity)
             {
                 firstHitColor = new BounceHitRecord(hit.materialID, true);
             }
@@ -308,7 +308,7 @@ namespace GPURayTracer.Rendering
             {
                 BounceRecord currentBounce = Bounce(currentHit, currentRay, materials[currentHit.materialID]);
 
-                if (camera.rngData[rngStartIndex + i % 1024]< currentBounce.reflectivity)
+                if (getNext(rngData, rngStartIndex + i) < currentBounce.reflectivity)
                 {
                     currentRay = currentBounce.reflectRay;
                     records[totalBounces].wasReflection = true;
@@ -386,6 +386,11 @@ namespace GPURayTracer.Rendering
             float radiusSquared = v;
             float radius = XMath.Sqrt(radiusSquared);
             return Vec3.unitVector(basis.transform(new Vec3(XMath.Cos(theta) * radius, XMath.Sin(theta) * radius, XMath.Sqrt(1 - radiusSquared))));
+        }
+
+        public static float getNext(ArrayView<float> data, int index)
+        {
+            return data[(index % data.Length)];
         }
     }
 

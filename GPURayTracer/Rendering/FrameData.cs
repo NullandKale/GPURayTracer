@@ -1,4 +1,5 @@
-﻿using ILGPU.Runtime;
+﻿using ILGPU;
+using ILGPU.Runtime;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -13,11 +14,29 @@ namespace GPURayTracer.Rendering
         public MemoryBuffer<float> frameBufferDiffuse;
         public MemoryBuffer<float> frameBufferEmmissive;
         public MemoryBuffer<byte> bitmapData;
-
+        public MemoryBuffer<float> rngData;
         public FrameData(Accelerator device, int width, int height, bool diffuse)
         {
             this.device = device;
             changeSize(width, height, diffuse);
+            initRandomness();
+        }
+
+        public void initRandomness()
+        {
+            int rngSize = 1024;
+
+            float[] rngData;
+            rngData = new float[rngSize];
+
+            Random rng = new Random();
+
+            for (int i = 0; i < rngSize; i++)
+            {
+                rngData[i] = (float)rng.NextDouble();
+            }
+
+            this.rngData = device.Allocate<float>(rngData);
         }
 
         public void changeSize(int width, int height, bool diffuse)

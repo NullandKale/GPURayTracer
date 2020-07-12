@@ -31,7 +31,7 @@ namespace GPURayTracer
         public int height;
         public double scale = -6;
         public int targetFPS = 60;
-        public bool diffuseOnly = true;
+        public bool diffuseOnly = false;
         public bool forceCPU = true;
 
         public FrameManager frame;
@@ -85,6 +85,7 @@ namespace GPURayTracer
             }
             catch (Exception e)
             {
+                FPS.Content = e.ToString();
                 Trace.WriteLine(e.ToString());
             }
         }
