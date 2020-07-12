@@ -41,11 +41,11 @@ namespace GPURayTracer.Rendering
 
         public UpdateStatsTimer rFPStimer;
 
-        public RayTracer(FrameManager frameManager, int width, int height, int targetFPS, bool diffuse)
+        public RayTracer(FrameManager frameManager, int width, int height, int targetFPS, bool diffuse, bool forceCPU)
         {
             context = new Context();
             context.EnableAlgorithms();
-            initBestDevice(false);
+            initBestDevice(forceCPU);
 
             frameData = new FrameData(device, width, height, diffuse);
             worldData = new WorldData(device);
@@ -143,8 +143,8 @@ namespace GPURayTracer.Rendering
 
         public void generateFrame()
         {
-            renderKernel(frameData.frameBuffer.Extent / 3, frameData.frameBuffer, worldData.getDeviceMaterials(), worldData.getDeviceSpheres(), frameData.camera);
-            outputKernel(frameData.frameBuffer.Extent / 3, frameData.frameBuffer, frameData.bitmapData, frameData.camera);
+            renderKernel(frameData.frameBufferDiffuse.Extent / 3, frameData.frameBufferDiffuse, worldData.getDeviceMaterials(), worldData.getDeviceSpheres(), frameData.camera);
+            outputKernel(frameData.frameBufferDiffuse.Extent / 3, frameData.frameBufferDiffuse, frameData.bitmapData, frameData.camera);
 
             device.Synchronize();
 
@@ -175,26 +175,29 @@ namespace GPURayTracer.Rendering
             //int g = data[(index * 3) + 1];
             //int b = data[(index * 3) + 2];
 
-            int x = ((index) % camera.width);
-            int y = ((index) / camera.width);
-
-            XorShift32 rng = new XorShift32((uint)(index + 1));
-
-            Vec3 col = ColorRay(rng, camera.GetRay(x + 0.5f, y + 0.5f), materials, spheres, camera.maxBounces, camera.diffuse);
-
-            for (int i = 0; i < camera.superSample; i++)
+            if((index * 3) < data.Length)
             {
-                for (int j = 0; j < camera.superSample; j++)
+                int x = ((index) % camera.width);
+                int y = ((index) / camera.width);
+
+                BounceHitRecord[] records = new BounceHitRecord[25];
+
+                Vec3 col = ColorRay(index, camera.GetRay(x + 0.5f, y + 0.5f), materials, spheres, records, camera);
+
+                for (int i = 0; i < camera.superSample; i++)
                 {
-                    col += ColorRay(rng, camera.GetRay(x + rng.NextFloat(), y + rng.NextFloat()), materials, spheres, camera.maxBounces, camera.diffuse);
+                    for (int j = 0; j < camera.superSample; j++)
+                    {
+                        col += ColorRay(index, camera.GetRay(x + ((float)i / camera.superSample), y + ((float)j / camera.superSample)), materials, spheres, records, camera);
+                    }
                 }
+
+                col /= ((camera.superSample * camera.superSample) + 1);
+
+                data[(index * 3)] = col.x;
+                data[(index * 3) + 1] = col.y;
+                data[(index * 3) + 2] = col.z;
             }
-
-            col /= ((camera.superSample * camera.superSample) + 1);
-
-            data[(index * 3)] = col.x;
-            data[(index * 3) + 1] = col.y;
-            data[(index * 3) + 2] = col.z;
         }
 
         private static HitRecord GetHit(Ray ray, ArrayView<Sphere> spheres)
@@ -247,7 +250,7 @@ namespace GPURayTracer.Rendering
             return new BounceRecord(reflectRay, diffuseRay, reflectivity);
         }
 
-        private static Vec3 ColorRay(XorShift32 rng, Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, int bounceCount, bool debug)
+        private static Vec3 ColorRay(int rngStartIndex, Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, BounceHitRecord[] records, Camera camera)
         {
             HitRecord hit = GetHit(ray, spheres);
 
@@ -280,14 +283,14 @@ namespace GPURayTracer.Rendering
                 reflectivity = material.reflectivity;
             }
 
-            if (debug)
+            if (camera.diffuse)
             {
                 return material.diffuseColor;
             }
 
             BounceHitRecord firstHitColor;
 
-            if (rng.NextFloat() < reflectivity)
+            if (camera.rngData[rngStartIndex % 1024] < reflectivity)
             {
                 firstHitColor = new BounceHitRecord(hit.materialID, true);
             }
@@ -301,13 +304,11 @@ namespace GPURayTracer.Rendering
 
             int totalBounces = 0;
 
-            BounceHitRecord[] records = new BounceHitRecord[bounceCount + 1];
-
-            for (int i = 0; i < bounceCount; i++)
+            for (int i = 0; i < camera.maxBounces; i++)
             {
                 BounceRecord currentBounce = Bounce(currentHit, currentRay, materials[currentHit.materialID]);
 
-                if (rng.NextFloat() < currentBounce.reflectivity)
+                if (camera.rngData[rngStartIndex + i % 1024]< currentBounce.reflectivity)
                 {
                     currentRay = currentBounce.reflectRay;
                     records[totalBounces].wasReflection = true;
@@ -327,7 +328,7 @@ namespace GPURayTracer.Rendering
                 {
                     records[totalBounces].materialID = currentHit.materialID;
                     totalBounces++;
-                    if(totalBounces <= bounceCount)
+                    if(totalBounces <= camera.maxBounces)
                     {
                         records[totalBounces].materialID = -1;
                     }

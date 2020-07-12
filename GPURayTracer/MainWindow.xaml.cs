@@ -31,7 +31,8 @@ namespace GPURayTracer
         public int height;
         public double scale = -6;
         public int targetFPS = 60;
-        public bool diffuseOnly = false;
+        public bool diffuseOnly = true;
+        public bool forceCPU = true;
 
         public FrameManager frame;
         public bool readyForUpdate = false;
@@ -73,17 +74,18 @@ namespace GPURayTracer
             if (rtRenderer != null)
             {
                 rtRenderer.JoinRenderThread();
+                rtRenderer.dispose();
+                rtRenderer = null;
             }
-            else
+
+            try
             {
-                try
-                {
-                    rtRenderer = new RayTracer(frame, width, height, targetFPS, diffuseOnly);
-                }
-                catch(Exception e)
-                {
-                    Trace.WriteLine(e.ToString());
-                }
+
+                rtRenderer = new RayTracer(frame, width, height, targetFPS, diffuseOnly, forceCPU);
+            }
+            catch (Exception e)
+            {
+                Trace.WriteLine(e.ToString());
             }
         }
 
@@ -110,52 +112,60 @@ namespace GPURayTracer
 
         public void updateFrame()
         {
-            if (readyForUpdate)
+            if(rtRenderer != null)
             {
-                displayTimer.endUpdate();
-                displayTimer.startUpdate();
-                FPS.Content = "Render Device: " + rtRenderer.device.AcceleratorType.ToString() + " @: " + width + " x " + height +
-                    "\n" + (int)(rtRenderer.rFPStimer.averageUpdateRate) + " tps " + (int)displayTimer.averageUpdateRate + " dps" +
-                    "\nArrow up / down. Res Scale: " + scale + "\n"
-                    + (diffuseOnly ? "DIFFUSE ONLY DEBUG " : "Standard Lighting ") + " D to toggle";
-                frame.update();
+                if (readyForUpdate)
+                {
+                    displayTimer.endUpdate();
+                    displayTimer.startUpdate();
+                    FPS.Content = "Render Device: " + rtRenderer.device.AcceleratorType.ToString() + " @: " + width + " x " + height +
+                        "\n" + (int)(rtRenderer.rFPStimer.averageUpdateRate) + " tps " + (int)displayTimer.averageUpdateRate + " dps" +
+                        "\nArrow up / down. Res Scale: " + scale + "\n"
+                        + (diffuseOnly ? "DIFFUSE ONLY DEBUG " : "Standard Lighting ") + " D to toggle";
+                    frame.update();
+                }
                 readyForUpdate = false;
             }
+
         }
 
         private void Frame_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            rtRenderer.pause = true;
-            Thread.Sleep(1);
-
-            Point p = e.GetPosition(Frame);
-            double frameWidth = Frame.ActualWidth;
-            double frameHeight = Frame.ActualHeight;
-
-            if (p.X > 0 && p.Y > 0 && p.X < frameWidth && p.Y < frameWidth)
+            if(rtRenderer != null)
             {
-                int size = (int)(width * 0.025);
+                rtRenderer.pause = true;
+                Thread.Sleep(1);
 
-                for (int i = -size; i <= size; i++)
+
+                Point p = e.GetPosition(Frame);
+                double frameWidth = Frame.ActualWidth;
+                double frameHeight = Frame.ActualHeight;
+
+                if (p.X > 0 && p.Y > 0 && p.X < frameWidth && p.Y < frameWidth)
                 {
-                    int x = (int)((p.X / frameWidth) * width) + i;
-                    if (x > 0 && x < width)
+                    int size = (int)(width * 0.025);
+
+                    for (int i = -size; i <= size; i++)
                     {
-                        for (int j = -size; j <= size; j++)
+                        int x = (int)((p.X / frameWidth) * width) + i;
+                        if (x > 0 && x < width)
                         {
-                            int y = (int)((p.Y / frameHeight) * height) + j;
-                            if (y > 0 && y < height)
+                            for (int j = -size; j <= size; j++)
                             {
-                                rtRenderer.output[(((y - 1) * width) + (x - 1)) * 3] = 255;
-                                rtRenderer.output[((((y - 1) * width) + (x - 1)) * 3) + 1] = 0;
-                                rtRenderer.output[((((y - 1) * width) + (x - 1)) * 3) + 2] = 0;
+                                int y = (int)((p.Y / frameHeight) * height) + j;
+                                if (y > 0 && y < height)
+                                {
+                                    rtRenderer.output[(((y - 1) * width) + (x - 1)) * 3] = 255;
+                                    rtRenderer.output[((((y - 1) * width) + (x - 1)) * 3) + 1] = 0;
+                                    rtRenderer.output[((((y - 1) * width) + (x - 1)) * 3) + 2] = 0;
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            rtRenderer.pause = false;
+                rtRenderer.pause = false;
+            }
         }
 
         private void Window_MouseMove(object sender, MouseEventArgs e)
@@ -199,55 +209,58 @@ namespace GPURayTracer
 
         private void Window_KeyDown(object sender, KeyEventArgs e)
         {
-            if(rtRenderer != null)
+            if (e.Key == Key.O)
             {
-                if (e.Key == Key.O)
+                if (WindowStyle == WindowStyle.SingleBorderWindow)
                 {
-                    if (WindowStyle == WindowStyle.SingleBorderWindow)
-                    {
-                        WindowState = WindowState.Normal;
-                        WindowStyle = WindowStyle.None;
-                        WindowState = WindowState.Maximized;
-                    }
-                    else
-                    {
-                        WindowStyle = WindowStyle.SingleBorderWindow;
-                        WindowState = WindowState.Normal;
-                    }
-
-                    Window_SizeChanged(sender, null);
+                    WindowState = WindowState.Normal;
+                    WindowStyle = WindowStyle.None;
+                    WindowState = WindowState.Maximized;
+                }
+                else
+                {
+                    WindowStyle = WindowStyle.SingleBorderWindow;
+                    WindowState = WindowState.Normal;
                 }
 
-                if(e.Key == Key.Up)
-                {
-                    scale++;
-                    if (scale == 0)
-                    {
-                        scale = 1;
-                    }
-                    Window_SizeChanged(sender, null);
-                }
+                Window_SizeChanged(sender, null);
+            }
 
-                if (e.Key == Key.Down)
+            if (e.Key == Key.Up)
+            {
+                scale++;
+                if (scale == 0)
                 {
-                    scale--;
-                    if (scale == 0)
-                    {
-                        scale = -1;
-                    }
-                    Window_SizeChanged(sender, null);
+                    scale = 1;
                 }
+                Window_SizeChanged(sender, null);
+            }
 
-                if(e.Key == Key.D)
+            if (e.Key == Key.Down)
+            {
+                scale--;
+                if (scale == 0)
                 {
-                    diffuseOnly = !diffuseOnly;
-                    Window_SizeChanged(sender, null);
+                    scale = -1;
                 }
+                Window_SizeChanged(sender, null);
+            }
 
-                if (e.Key ==  Key.Escape)
-                {
-                    Close();
-                }
+            if (e.Key == Key.D)
+            {
+                diffuseOnly = !diffuseOnly;
+                Window_SizeChanged(sender, null);
+            }
+
+            if (e.Key == Key.C)
+            {
+                forceCPU = !forceCPU;
+                Window_SizeChanged(sender, null);
+            }
+
+            if (e.Key == Key.Escape)
+            {
+                Close();
             }
         }
     }

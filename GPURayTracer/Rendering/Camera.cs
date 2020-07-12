@@ -24,6 +24,8 @@ namespace GPURayTracer.Rendering
         public float apertureRadius;
         public float focalDistance;
 
+        public float[] rngData;
+
         public Camera(Vec3 origin, Vec3 lookAt, Vec3 up, int width, int height, int superSample, int maxBounces, float verticalFov, bool diffuseOnly, Vec3 focalPoint, float apertureRadius)
         {
             this.width = width;
@@ -41,6 +43,17 @@ namespace GPURayTracer.Rendering
             reciprocalWidth = 1.0f / width;
             focalDistance = (focalPoint - origin).length();
             this.apertureRadius = apertureRadius;
+
+            int rngSize = 1024;
+
+            rngData = new float[rngSize];
+            
+            Random rng = new Random();
+
+            for(int i = 0; i < rngSize; i++)
+            {
+                rngData[i] = (float)rng.NextDouble();
+            }
         }
 
         private Ray rayFromUnit(float x, float y)
