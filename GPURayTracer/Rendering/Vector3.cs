@@ -5,15 +5,15 @@ using System.Text;
 
 namespace GPURayTracer.Rendering
 {
-    public struct Vec3
+    public readonly struct Vec3
     {
         public static readonly Vec3 xAxis = new Vec3(1, 0, 0);
         public static readonly Vec3 yAxis = new Vec3(0, 1, 0);
         public static readonly Vec3 zAxis = new Vec3(0, 0, 1);
 
-        public float x;
-        public float y;
-        public float z;
+        public readonly float x;
+        public readonly float y;
+        public readonly float z;
 
         public Vec3(float x, float y, float z)
         {

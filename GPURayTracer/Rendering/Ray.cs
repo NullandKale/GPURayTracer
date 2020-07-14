@@ -4,10 +4,10 @@ using System.Text;
 
 namespace GPURayTracer.Rendering
 {
-    public struct Ray
+    public readonly struct Ray
     {
-        public Vec3 a;
-        public Vec3 b;
+        public readonly Vec3 a;
+        public readonly Vec3 b;
 
         public Ray(Vec3 a, Vec3 b)
         {

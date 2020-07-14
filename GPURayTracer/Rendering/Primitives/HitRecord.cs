@@ -4,15 +4,15 @@ using System.Text;
 
 namespace GPURayTracer.Rendering.Primitives
 {
-    public struct HitRecord
+    public readonly struct HitRecord
     {
         public static readonly HitRecord badHit = new HitRecord(float.MaxValue, new Vec3(), new Vec3(), false, -1);
 
-        public float t;
-        public bool inside;
-        public Vec3 p;
-        public Vec3 normal;
-        public int materialID;
+        public readonly float t;
+        public readonly bool inside;
+        public readonly Vec3 p;
+        public readonly Vec3 normal;
+        public readonly int materialID;
 
         public HitRecord(float t, Vec3 p, Vec3 normal, bool inside, int materialID)
         {

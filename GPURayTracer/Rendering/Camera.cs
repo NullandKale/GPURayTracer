@@ -5,24 +5,24 @@ using System.Text;
 
 namespace GPURayTracer.Rendering
 {
-    public struct Camera
+    public readonly struct Camera
     {
-        public int height;
-        public int width;
-        public int superSample;
-        public int maxBounces;
+        public readonly int height;
+        public readonly int width;
+        public readonly int superSample;
+        public readonly int maxBounces;
 
-        public bool diffuse;
+        public readonly bool diffuse;
 
-        public Vec3 origin;
-        public OrthoNormalBasis axis;
+        public readonly Vec3 origin;
+        public readonly OrthoNormalBasis axis;
 
-        public float aspectRatio;
-        public float cameraPlaneDist;
-        public float reciprocalHeight;
-        public float reciprocalWidth;
-        public float apertureRadius;
-        public float focalDistance;
+        public readonly float aspectRatio;
+        public readonly float cameraPlaneDist;
+        public readonly float reciprocalHeight;
+        public readonly float reciprocalWidth;
+        public readonly float apertureRadius;
+        public readonly float focalDistance;
 
         public Camera(Vec3 origin, Vec3 lookAt, Vec3 up, int width, int height, int superSample, int maxBounces, float verticalFov, bool diffuseOnly, Vec3 focalPoint, float apertureRadius)
         {

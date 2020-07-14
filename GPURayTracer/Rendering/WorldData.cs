@@ -25,25 +25,23 @@ namespace GPURayTracer.Rendering
             spheres = new List<Sphere>();
             materials = new List<MaterialData>();
 
-            addMaterial(MaterialData.makeLight(new Vec3(8000, 8000, 8000)));
-            addSphere(new Sphere(new Vec3(6, 6, -6.2f), 3, 0));
+            addMaterial(MaterialData.makeLight(new Vec3(80, 80, 80)));
+            addSphere(new Sphere(new Vec3(0, -1, 1), 0.5f, 0));
 
-            MaterialData sphereMat = MaterialData.makeDiffuse(new Vec3(0.2f, 0.2f, 0.2f));
-            sphereMat.ref_idx = 1.3f;
-            sphereMat.reflectionConeAngleRadians = 0.05f;
+            MaterialData sphereMat = new MaterialData(new Vec3(), new Vec3(0.2f, 0.2f, 0.2f), 1.3f, 0, 0.05f);
 
             MaterialData redSphereMat = MaterialData.makeDiffuse(new Vec3(0.8f, 0.2f, 0.2f));
-            sphereMat.ref_idx = 1.3f;
-            sphereMat.reflectionConeAngleRadians = 0.05f;
 
             MaterialData bluephereMat = MaterialData.makeDiffuse(new Vec3(0.2f, 0.2f, 0.8f));
-            sphereMat.ref_idx = 1.3f;
-            sphereMat.reflectionConeAngleRadians = 0.05f;
+
+
+            addMaterial(sphereMat);
+            addSphere(new Sphere(new Vec3(0, 0, 0), 0.25f, 1));
 
             addMaterial(redSphereMat);
-            addSphere(new Sphere(new Vec3(0.5f, 0, 0), 0.25f, 1));
+            addSphere(new Sphere(new Vec3(1f, 0, 0), 0.25f, 2));
             addMaterial(bluephereMat);
-            addSphere(new Sphere(new Vec3(-0.5f, 0, 0), 0.25f, 2));
+            addSphere(new Sphere(new Vec3(-1f, 0, 0), 0.25f, 3));
         }
 
         public int addMaterial(MaterialData toAdd)

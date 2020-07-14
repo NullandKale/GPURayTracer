@@ -5,12 +5,12 @@ using System.Text;
 
 namespace GPURayTracer.Rendering.Primitives
 {
-    public struct Sphere
+    public readonly struct Sphere
     {
-        public Vec3 center;
-        public float radius;
-        public float radiusSquared;
-        public int materialIndex;
+        public readonly Vec3 center;
+        public readonly float radius;
+        public readonly float radiusSquared;
+        public readonly int materialIndex;
 
         public Sphere(Vec3 center, float radius, int materialIndex)
         {

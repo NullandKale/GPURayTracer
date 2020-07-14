@@ -118,6 +118,7 @@ namespace GPURayTracer.Rendering
             device.Dispose();
             context.Dispose();
         }
+
         private void renderThreadMain()
         {
             while (run)
@@ -130,7 +131,6 @@ namespace GPURayTracer.Rendering
                 {
                     ready = false;
                     rFPStimer.startUpdate();
-
                     generateFrame();
 
                     frame.write(ref output);
@@ -176,29 +176,24 @@ namespace GPURayTracer.Rendering
             //int g = data[(index * 3) + 1];
             //int b = data[(index * 3) + 2];
 
-            if((index * 3) < diffuseFrameData.Length)
+            int x = ((index) % camera.width);
+            int y = ((index) / camera.width);
+
+            Vec3 col = ColorRay(index, camera.GetRay(x + 0.5f, y + 0.5f), materials, spheres, rngData, camera, 0);
+
+            for (int i = 0; i < camera.superSample; i++)
             {
-                int x = ((index) % camera.width);
-                int y = ((index) / camera.width);
-
-                BounceHitRecord[] records = new BounceHitRecord[101];
-
-                Vec3 col = ColorRay(index, camera.GetRay(x + 0.5f, y + 0.5f), materials, spheres, rngData, records, camera);
-
-                for (int i = 0; i < camera.superSample; i++)
+                for (int j = 0; j < camera.superSample; j++)
                 {
-                    for (int j = 0; j < camera.superSample; j++)
-                    {
-                        col += ColorRay(index, camera.GetRay(x + ((float)i / camera.superSample), y + ((float)j / camera.superSample)), materials, spheres, rngData, records, camera);
-                    }
+                    col += ColorRay(index, camera.GetRay(x + ((float)i / camera.superSample), y + ((float)j / camera.superSample)), materials, spheres, rngData, camera, 0);
                 }
-
-                col /= ((camera.superSample * camera.superSample) + 1);
-
-                diffuseFrameData[(index * 3)] = col.x;
-                diffuseFrameData[(index * 3) + 1] = col.y;
-                diffuseFrameData[(index * 3) + 2] = col.z;
             }
+
+            col /= ((camera.superSample * camera.superSample) + 1);
+
+            diffuseFrameData[(index * 3)] = col.x;
+            diffuseFrameData[(index * 3) + 1] = col.y;
+            diffuseFrameData[(index * 3) + 2] = col.z;
         }
 
         private static HitRecord GetHit(Ray ray, ArrayView<Sphere> spheres)
@@ -251,8 +246,13 @@ namespace GPURayTracer.Rendering
             return new BounceRecord(reflectRay, diffuseRay, reflectivity);
         }
 
-        private static Vec3 ColorRay(int rngStartIndex, Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, ArrayView<float> rngData, BounceHitRecord[] records, Camera camera)
+        private static Vec3 ColorRay(int rngStartIndex, Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, ArrayView<float> rngData, Camera camera, int depth)
         {
+            if(depth >= camera.maxBounces)
+            {
+                return new Vec3();
+            }
+
             HitRecord hit = GetHit(ray, spheres);
 
             if (hit.materialID == -1)
@@ -261,6 +261,8 @@ namespace GPURayTracer.Rendering
             }
 
             MaterialData material = materials[hit.materialID];
+
+            Vec3 result = new Vec3();
 
             float iorFrom, iorTo, reflectivity;
 
@@ -289,81 +291,22 @@ namespace GPURayTracer.Rendering
                 return material.diffuseColor;
             }
 
-            BounceHitRecord firstHitColor;
+            OrthoNormalBasis basis = OrthoNormalBasis.fromZ(hit.normal);
+            int newDepth = depth + 1;
 
             if (getNext(rngData, rngStartIndex) < reflectivity)
             {
-                firstHitColor = new BounceHitRecord(hit.materialID, true);
+                Ray reflectRay = new Ray(hit.p, coneSample(Vec3.reflect(hit.normal, ray.b), material.reflectionConeAngleRadians, 0, 0));
+                result += material.emmissiveColor + ColorRay(rngStartIndex, reflectRay, materials, spheres, rngData, camera, newDepth);
             }
             else
             {
-                firstHitColor = new BounceHitRecord(hit.materialID, false);
+                Ray diffuseRay = new Ray(hit.p, hemisphereSample(basis, 0, 0));
+                result += material.emmissiveColor + material.diffuseColor * ColorRay(rngStartIndex, diffuseRay, materials, spheres, rngData, camera, newDepth);
+
             }
 
-            Ray currentRay = ray;
-            HitRecord currentHit = hit;
-
-            int totalBounces = 0;
-
-            for (int i = 0; i < camera.maxBounces; i++)
-            {
-                BounceRecord currentBounce = Bounce(currentHit, currentRay, materials[currentHit.materialID]);
-
-                if (getNext(rngData, rngStartIndex + i) < currentBounce.reflectivity)
-                {
-                    currentRay = currentBounce.reflectRay;
-                    records[totalBounces].wasReflection = true;
-                }
-                else
-                {
-                    currentRay = currentBounce.diffuseRay;
-                }
-
-                currentHit = GetHit(currentRay, spheres);
-
-                if (currentHit.materialID == -1)
-                {
-                    break;
-                }
-                else
-                {
-                    records[totalBounces].materialID = currentHit.materialID;
-                    totalBounces++;
-                    if(totalBounces <= camera.maxBounces)
-                    {
-                        records[totalBounces].materialID = -1;
-                    }
-                }
-            }
-
-            Vec3 bounceColor = new Vec3();
-
-            for (int i = totalBounces - 1; i >= 0; i--)
-            {
-                if(records[i].materialID != -1)
-                {
-                    material = materials[records[i].materialID];
-                    if (records[i].wasReflection)
-                    {
-                        bounceColor += material.emmissiveColor;
-                    }
-                    else
-                    {
-                        bounceColor = material.emmissiveColor + (material.diffuseColor * bounceColor);
-                    }
-                }
-            }
-
-            material = materials[firstHitColor.materialID];
-
-            if(firstHitColor.wasReflection)
-            {
-                return (material.emmissiveColor + bounceColor) / (totalBounces + 1);
-            }
-            else
-            {
-                return (material.emmissiveColor + (material.diffuseColor * bounceColor)) / (totalBounces + 1);
-            }
+            return result;
         }
 
         private static Vec3 coneSample(Vec3 direction, float coneTheta, float u, float v)

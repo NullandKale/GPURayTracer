@@ -6,11 +6,11 @@ namespace GPURayTracer.Rendering.Primitives
 {
     public struct MaterialData
     {
-        public Vec3 emmissiveColor;
-        public Vec3 diffuseColor;
-        public float ref_idx;
-        public float reflectivity;
-        public float reflectionConeAngleRadians;
+        public readonly Vec3 emmissiveColor;
+        public readonly Vec3 diffuseColor;
+        public readonly float ref_idx;
+        public readonly float reflectivity;
+        public readonly float reflectionConeAngleRadians;
 
         public MaterialData(Vec3 emmissiveColor, Vec3 diffuseColor, float ref_idx, float reflectivity, float reflectionConeAngleRadians)
         {
