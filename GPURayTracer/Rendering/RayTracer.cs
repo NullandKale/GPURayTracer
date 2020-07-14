@@ -215,7 +215,7 @@ namespace GPURayTracer.Rendering
             return closestHit;
         }
 
-        private static BounceRecord Bounce(HitRecord hit, Ray ray, MaterialData material)
+        private static BounceRecord Bounce(float rngNext, HitRecord hit, Ray ray, MaterialData material)
         {
             float iorFrom, iorTo, reflectivity;
 
@@ -240,73 +240,56 @@ namespace GPURayTracer.Rendering
             }
 
             OrthoNormalBasis basis = OrthoNormalBasis.fromZ(hit.normal);
-            Ray reflectRay = new Ray(hit.p, coneSample(Vec3.reflect(hit.normal, ray.b), material.reflectionConeAngleRadians, 0, 0));
-            Ray diffuseRay = new Ray(hit.p, hemisphereSample(basis, 0, 0));
 
-            return new BounceRecord(reflectRay, diffuseRay, reflectivity);
+            if (rngNext < reflectivity)
+            {
+                return new BounceRecord(new Ray(hit.p, coneSample(Vec3.reflect(hit.normal, ray.b), material.reflectionConeAngleRadians, 0, 0)), true);
+            }
+            else
+            {
+                return new BounceRecord(new Ray(hit.p, hemisphereSample(basis, 0, 0)), false);
+            }
         }
 
         private static Vec3 ColorRay(int rngStartIndex, Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, ArrayView<float> rngData, Camera camera, int depth)
         {
-            if(depth >= camera.maxBounces)
-            {
-                return new Vec3();
-            }
-
-            HitRecord hit = GetHit(ray, spheres);
-
-            if (hit.materialID == -1)
-            {
-                return new Vec3(0.2f, 0.2f, 0.5f);
-            }
-
-            MaterialData material = materials[hit.materialID];
-
             Vec3 result = new Vec3();
 
-            float iorFrom, iorTo, reflectivity;
-
-            if (hit.inside)
+            if (depth >= camera.maxBounces)
             {
-                iorFrom = material.ref_idx;
-                iorTo = 1;
+                return result;
             }
             else
             {
-                iorFrom = 1;
-                iorTo = material.ref_idx;
-            }
+                HitRecord hit = GetHit(ray, spheres);
 
-            if (material.reflectivity < 0)
-            {
-                reflectivity = Vec3.NormalReflectance(hit.normal, ray.b, iorFrom, iorTo);
-            }
-            else
-            {
-                reflectivity = material.reflectivity;
-            }
+                if (hit.materialID == -1)
+                {
+                    return new Vec3(0.2f, 0.2f, 0.5f);
+                }
+                else
+                {
+                    MaterialData material = materials[hit.materialID];
 
-            if (camera.diffuse)
-            {
-                return material.diffuseColor;
+                    if (camera.diffuse)
+                    {
+                        return material.diffuseColor;
+                    }
+
+                    BounceRecord record = Bounce(getNext(rngData, rngStartIndex + depth), hit, ray, material);
+
+                    if (record.wasReflection)
+                    {
+                        result += material.emmissiveColor + ColorRay(rngStartIndex, record.ray, materials, spheres, rngData, camera, depth + 1);
+                    }
+                    else
+                    {
+                        result += material.emmissiveColor + material.diffuseColor * ColorRay(rngStartIndex, record.ray, materials, spheres, rngData, camera, depth + 1);
+                    }
+
+                    return result;
+                }
             }
-
-            OrthoNormalBasis basis = OrthoNormalBasis.fromZ(hit.normal);
-            int newDepth = depth + 1;
-
-            if (getNext(rngData, rngStartIndex) < reflectivity)
-            {
-                Ray reflectRay = new Ray(hit.p, coneSample(Vec3.reflect(hit.normal, ray.b), material.reflectionConeAngleRadians, 0, 0));
-                result += material.emmissiveColor + ColorRay(rngStartIndex, reflectRay, materials, spheres, rngData, camera, newDepth);
-            }
-            else
-            {
-                Ray diffuseRay = new Ray(hit.p, hemisphereSample(basis, 0, 0));
-                result += material.emmissiveColor + material.diffuseColor * ColorRay(rngStartIndex, diffuseRay, materials, spheres, rngData, camera, newDepth);
-
-            }
-
-            return result;
         }
 
         private static Vec3 coneSample(Vec3 direction, float coneTheta, float u, float v)
@@ -338,24 +321,22 @@ namespace GPURayTracer.Rendering
         }
     }
 
-    internal struct BounceRecord
+    internal readonly struct BounceRecord
     {
-        public Ray reflectRay;
-        public Ray diffuseRay;
-        public float reflectivity;
+        public readonly Ray ray;
+        public readonly bool wasReflection;
 
-        public BounceRecord(Ray reflectRay, Ray diffuseRay, float reflectivity)
+        public BounceRecord(Ray ray, bool wasReflection)
         {
-            this.reflectRay = reflectRay;
-            this.diffuseRay = diffuseRay;
-            this.reflectivity = reflectivity;
+            this.ray = ray;
+            this.wasReflection = wasReflection;
         }
     }
 
-    internal struct BounceHitRecord
+    internal readonly struct BounceHitRecord
     {
-        public int materialID;
-        public bool wasReflection;
+        public readonly int materialID;
+        public readonly bool wasReflection;
         public BounceHitRecord(int materialID, bool wasReflection)
         {
             this.materialID = materialID;
