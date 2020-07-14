@@ -144,78 +144,138 @@ namespace GPURayTracer.Rendering
 
         public void generateFrame()
         {
-            renderKernel(frameData.frameBufferDiffuse.Extent / 3, frameData.frameBufferDiffuse, frameData.rngData, worldData.getDeviceMaterials(), worldData.getDeviceSpheres(), frameData.camera);
-            outputKernel(frameData.frameBufferDiffuse.Extent / 3, frameData.frameBufferDiffuse, frameData.bitmapData, frameData.camera);
+            renderKernel(frameData.frameBuffer.Extent / 3, frameData.frameBuffer, frameData.rngData, worldData.getDeviceMaterials(), worldData.getDeviceSpheres(), frameData.camera);
+            outputKernel(frameData.frameBuffer.Extent / 3, frameData.frameBuffer, frameData.bitmapData, frameData.camera);
 
             device.Synchronize();
 
             frameData.bitmapData.CopyTo(output, 0, 0, frameData.bitmapData.Length);
         }
 
-        public static void CreatBitmap(Index1 index, ArrayView<float> data, ArrayView<byte> bitmapData, Camera camera)
-        {
-            //FLIP Y
-            //int x = (camera.width - 1) - ((index) % camera.width);
-            int y = (camera.height - 1) - ((index) / camera.width);
-
-            //NORMAL X
-            int x = ((index) % camera.width);
-            //int y = ((index) / camera.width);
-
-            int newIndex = ((y * camera.width) + x);
-
-            bitmapData[(newIndex * 3)] = (byte)(255.99f * data[(index * 3)]);
-            bitmapData[(newIndex * 3) + 1] = (byte)(255.99f * data[(index * 3) + 1]);
-            bitmapData[(newIndex * 3) + 2] = (byte)(255.99f * data[(index * 3) + 2]);
-        }
-
         private static void RenderKernel(Index1 index, ArrayView<float> diffuseFrameData, ArrayView<float> rngData, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, Camera camera)
         {
-            // color cheatsheet
-            //int r = data[(index * 3)];
-            //int g = data[(index * 3) + 1];
-            //int b = data[(index * 3) + 2];
-
             int x = ((index) % camera.width);
             int y = ((index) / camera.width);
 
             Vec3 col = ColorRay(index, camera.GetRay(x + 0.5f, y + 0.5f), materials, spheres, rngData, camera);
-
-            for (int i = 0; i < camera.superSample; i++)
-            {
-                for (int j = 0; j < camera.superSample; j++)
-                {
-                    col += ColorRay(index, camera.GetRay(x + ((float)i / camera.superSample), y + ((float)j / camera.superSample)), materials, spheres, rngData, camera);
-                }
-            }
-
-            if(camera.superSample > 0)
-            {
-                col /= ((camera.superSample * camera.superSample) + 1);
-            }
 
             diffuseFrameData[(index * 3)] = col.x;
             diffuseFrameData[(index * 3) + 1] = col.y;
             diffuseFrameData[(index * 3) + 2] = col.z;
         }
 
-        private static HitRecord GetHit(Ray ray, ArrayView<Sphere> spheres)
+        private static Vec3 ColorRay(int rngStartIndex, Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, ArrayView<float> rngData, Camera camera)
         {
-            HitRecord closestHit = HitRecord.badHit;
+            Vec3 result = new Vec3(1, 1, 1);
 
-            for (int i = 0; i < spheres.Length; i++)
+            int bounceCount = 0;
+
+            BounceRecord[] bounces = new BounceRecord[6];
+
+            for (int i = 0; i < camera.maxBounces; i++)
             {
-                HitRecord rec = Sphere.hit(spheres[i], ray, 0.001f, float.MaxValue, closestHit);
-                if (rec.t != -1)
+                BounceRecord record = hitBounce(rngStartIndex, ray, materials, spheres, rngData);
+
+                if (record.MaterialID == -1)
                 {
-                    if (rec.t < closestHit.t)
+                    break;
+                }
+                else
+                {
+                    bounces[bounceCount] = record;
+                    bounceCount++;
+
+                    if (camera.diffuse)
                     {
-                        closestHit = rec;
+                        return materials[record.MaterialID].diffuseColor;
                     }
                 }
             }
 
-            return closestHit;
+            if (bounceCount == 0)
+            {
+                return new Vec3(0.2f, 0.2f, 0.5f);
+            }
+            else
+            {
+                for (int i = bounceCount; i >= 0; i--)
+                {
+                    BounceRecord record = bounces[i];
+                    MaterialData material = materials[record.MaterialID];
+
+                    if (record.wasReflection)
+                    {
+                        result = material.emmissiveColor + result;
+                    }
+                    else
+                    {
+                        result = material.emmissiveColor + material.diffuseColor * result;
+                    }
+                }
+
+                return result / bounceCount;
+            }
+        }
+
+        private static BounceRecord hitBounce(int rngStartIndex, Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, ArrayView<float> rngData)
+        {
+            HitRecord hit = GetHit(ray, spheres);
+
+            if (hit.materialID == -1)
+            {
+                return new BounceRecord(new Ray(), -1, false);
+            }
+            else
+            {
+                MaterialData material = materials[hit.materialID];
+                return Bounce(getNext(rngData, rngStartIndex), hit, ray, material);
+            }
+        }
+
+        private static HitRecord GetHit(Ray r, ArrayView<Sphere> spheres)
+        {
+            float closestT = float.MaxValue;
+            int sphereIndex = -1;
+
+            for (int i = 0; i < spheres.Length; i++)
+            {
+                Sphere s = spheres[i];
+                Vec3 oc = r.a - s.center;
+
+                float a = Vec3.dot(r.b, r.b);
+                float b = Vec3.dot(oc, r.b);
+                float c = Vec3.dot(oc, oc) - s.radiusSquared;
+                float discr = (b * b) - (a * c);
+
+                if (discr > 0)
+                {
+                    float sqrtdisc = XMath.Sqrt(discr);
+                    float temp = (-b - sqrtdisc) / a;
+                    if (temp < closestT && temp > 0.001f)
+                    {
+                        closestT = temp;
+                        sphereIndex = i;
+                        continue;
+                    }
+                    temp = (-b + sqrtdisc) / a;
+                    if (temp < closestT && temp > 0.001f)
+                    {
+                        closestT = temp;
+                        sphereIndex = i;
+                    }
+                }
+            }
+
+            if(sphereIndex != -1)
+            {
+                Vec3 p = r.pointAtParameter(closestT);
+                Sphere s = spheres[sphereIndex];
+                return new HitRecord(closestT, p, (p - s.center) / s.radius, r.b, s.materialIndex);
+            }
+            else
+            {
+                return HitRecord.badHit;
+            }
         }
 
         private static HitRecord GetTriangleHit(Ray r, ArrayView<Triangle> triangles, ArrayView<Triangle> normals)
@@ -226,7 +286,7 @@ namespace GPURayTracer.Rendering
             float Nu = 0;
             float Nv = 0;
 
-            for(int i = 0; i < triangles.Length; i++)
+            for (int i = 0; i < triangles.Length; i++)
             {
                 Triangle t = triangles[i];
                 Vec3 tuVec = t.uVector();
@@ -261,7 +321,7 @@ namespace GPURayTracer.Rendering
                 }
             }
 
-            if(NcurrentIndex == -1)
+            if (NcurrentIndex == -1)
             {
                 return HitRecord.badHit;
             }
@@ -312,74 +372,6 @@ namespace GPURayTracer.Rendering
             }
         }
 
-        private static BounceRecord hitBounce(int rngStartIndex, Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, ArrayView<float> rngData)
-        {
-            HitRecord hit = GetHit(ray, spheres);
-
-            if (hit.materialID == -1)
-            {
-                return new BounceRecord(new Ray(), -1, false);
-            }
-            else
-            {
-                MaterialData material = materials[hit.materialID];
-                return Bounce(getNext(rngData, rngStartIndex), hit, ray, material);
-            }
-        }
-
-        private static Vec3 ColorRay(int rngStartIndex, Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, ArrayView<float> rngData, Camera camera)
-        {
-            Vec3 result = new Vec3(1,1,1);
-
-            int bounceCount = 0;
-
-            BounceRecord[] bounces = new BounceRecord[5];
-
-            for (int i = 0; i < camera.maxBounces; i++)
-            {
-                BounceRecord record = hitBounce(rngStartIndex, ray, materials, spheres, rngData);
-
-                if (record.MaterialID == -1)
-                {
-                    break;
-                }
-                else
-                {
-                    bounces[bounceCount] = record;
-                    bounceCount++;
-
-                    if (camera.diffuse)
-                    {
-                        return materials[record.MaterialID].diffuseColor;
-                    }
-                }
-            }
-
-            if (bounceCount == 0)
-            {
-                return new Vec3(0.2f, 0.2f, 0.5f);
-            }
-            else
-            {
-                for(int i = bounceCount; i >= 0; i--)
-                {
-                    BounceRecord record = bounces[i];
-                    MaterialData material = materials[record.MaterialID];
-
-                    if (record.wasReflection)
-                    {
-                        result = material.emmissiveColor + result;
-                    }
-                    else
-                    {
-                        result = material.emmissiveColor + material.diffuseColor * result;
-                    }
-                }
-
-                return result / bounceCount;
-            }
-        }
-
         private static Vec3 coneSample(Vec3 direction, float coneTheta, float u, float v)
         {
             if (coneTheta < float.Epsilon)
@@ -403,9 +395,26 @@ namespace GPURayTracer.Rendering
             return Vec3.unitVector(basis.transform(new Vec3(XMath.Cos(theta) * radius, XMath.Sin(theta) * radius, XMath.Sqrt(1 - radiusSquared))));
         }
 
-        public static float getNext(ArrayView<float> data, int index)
+        private static float getNext(ArrayView<float> data, int index)
         {
             return data[(index % data.Length)];
+        }
+
+        private static void CreatBitmap(Index1 index, ArrayView<float> data, ArrayView<byte> bitmapData, Camera camera)
+        {
+            //FLIP Y
+            //int x = (camera.width - 1) - ((index) % camera.width);
+            int y = (camera.height - 1) - ((index) / camera.width);
+
+            //NORMAL X
+            int x = ((index) % camera.width);
+            //int y = ((index) / camera.width);
+
+            int newIndex = ((y * camera.width) + x);
+
+            bitmapData[(newIndex * 3)] = (byte)(255.99f * data[(index * 3)]);
+            bitmapData[(newIndex * 3) + 1] = (byte)(255.99f * data[(index * 3) + 1]);
+            bitmapData[(newIndex * 3) + 2] = (byte)(255.99f * data[(index * 3) + 2]);
         }
     }
 

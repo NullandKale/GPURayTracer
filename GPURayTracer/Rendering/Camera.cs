@@ -9,7 +9,6 @@ namespace GPURayTracer.Rendering
     {
         public readonly int height;
         public readonly int width;
-        public readonly int superSample;
         public readonly int maxBounces;
 
         public readonly bool diffuse;
@@ -24,11 +23,10 @@ namespace GPURayTracer.Rendering
         public readonly float apertureRadius;
         public readonly float focalDistance;
 
-        public Camera(Vec3 origin, Vec3 lookAt, Vec3 up, int width, int height, int superSample, int maxBounces, float verticalFov, bool diffuseOnly, Vec3 focalPoint, float apertureRadius)
+        public Camera(Vec3 origin, Vec3 lookAt, Vec3 up, int width, int height, int maxBounces, float verticalFov, bool diffuseOnly, Vec3 focalPoint, float apertureRadius)
         {
             this.width = width;
             this.height = height;
-            this.superSample = superSample;
             this.maxBounces = maxBounces;
             this.diffuse = diffuseOnly;
 
@@ -51,19 +49,6 @@ namespace GPURayTracer.Rendering
             Vec3 direction = Vec3.unitVector(xContrib + yContrib + zContrib);
 
             return new Ray(origin, direction);
-
-            //if (apertureRadius == 0)
-            //{
-            //    return new Ray(origin, direction);
-            //}
-
-            //Vec3 focalPoint = origin + direction * focalDistance;
-            //std::uniform_real_distribution<> angleDist(0, 2 * M_PI);
-            //std::uniform_real_distribution<> radiusDist(0, apertureRadius_);
-            //float angle = angleDist(rng);
-            //float radius = radiusDist(rng);
-            //Vec3 center = origin + (axis.x * XMath.Cos(angle) * radius) + (axis.y * XMath.Sin(angle) * radius);
-            //return Ray::fromTwoPoints(center, focalPoint);
         }
 
         public Ray GetRay(float x, float y)
@@ -72,11 +57,11 @@ namespace GPURayTracer.Rendering
         }
     }
 
-    public struct OrthoNormalBasis
+    public readonly struct OrthoNormalBasis
     {
-        public Vec3 x;
-        public Vec3 y;
-        public Vec3 z;
+        public readonly Vec3 x;
+        public readonly Vec3 y;
+        public readonly Vec3 z;
 
         public OrthoNormalBasis(Vec3 x, Vec3 y, Vec3 z)
         {
