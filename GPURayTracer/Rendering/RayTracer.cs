@@ -181,7 +181,7 @@ namespace GPURayTracer.Rendering
                 int x = ((index) % camera.width);
                 int y = ((index) / camera.width);
 
-                BounceHitRecord[] records = new BounceHitRecord[25];
+                BounceHitRecord[] records = new BounceHitRecord[101];
 
                 Vec3 col = ColorRay(index, camera.GetRay(x + 0.5f, y + 0.5f), materials, spheres, rngData, records, camera);
 
