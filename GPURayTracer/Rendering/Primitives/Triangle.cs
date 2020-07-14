@@ -34,39 +34,5 @@ namespace GPURayTracer.Rendering.Primitives
         {
             return Vec3.unitVector(Vec3.cross(uVector(), vVector()));
         }
-
-        public static HitRecord hit(Triangle t, Ray r, float tMin, float tMax, HitRecord rec)
-        {
-            Vec3 tuVec = t.uVector();
-            Vec3 tvVec = t.vVector();
-            Vec3 pVec = Vec3.cross(r.b, tvVec);
-            float det = Vec3.dot(tuVec, pVec);
-
-            if (XMath.Abs(det) < 0.00001f)
-            {
-                return HitRecord.badHit;
-            }
-            else
-            {
-                float invDet = 1.0f / det;
-                Vec3 tVec = r.a - t.Vert0;
-                float u = Vec3.dot(tVec, pVec) * invDet;
-                Vec3 qVec = Vec3.cross(tVec, tuVec);
-                float v = Vec3.dot(r.b, qVec);
-
-                if (u < 0.0 || u > 1.0 || v < 0 || u + v > 1)
-                {
-                    return HitRecord.badHit;
-                }
-
-                float temp = Vec3.dot(tvVec, qVec) * invDet;
-                if (temp > tMin && temp < tMax)
-                {
-                    return new HitRecord(temp, )
-                }
-            }
-
-            return HitRecord.badHit;
-        }
     }
 }
