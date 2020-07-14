@@ -179,17 +179,20 @@ namespace GPURayTracer.Rendering
             int x = ((index) % camera.width);
             int y = ((index) / camera.width);
 
-            Vec3 col = ColorRay(index, camera.GetRay(x + 0.5f, y + 0.5f), materials, spheres, rngData, camera, 0);
+            Vec3 col = ColorRay(index, camera.GetRay(x + 0.5f, y + 0.5f), materials, spheres, rngData, camera);
 
             for (int i = 0; i < camera.superSample; i++)
             {
                 for (int j = 0; j < camera.superSample; j++)
                 {
-                    col += ColorRay(index, camera.GetRay(x + ((float)i / camera.superSample), y + ((float)j / camera.superSample)), materials, spheres, rngData, camera, 0);
+                    col += ColorRay(index, camera.GetRay(x + ((float)i / camera.superSample), y + ((float)j / camera.superSample)), materials, spheres, rngData, camera);
                 }
             }
 
-            col /= ((camera.superSample * camera.superSample) + 1);
+            if(camera.superSample > 0)
+            {
+                col /= ((camera.superSample * camera.superSample) + 1);
+            }
 
             diffuseFrameData[(index * 3)] = col.x;
             diffuseFrameData[(index * 3) + 1] = col.y;
@@ -205,7 +208,7 @@ namespace GPURayTracer.Rendering
                 HitRecord rec = Sphere.hit(spheres[i], ray, 0.001f, float.MaxValue, closestHit);
                 if (rec.t != -1)
                 {
-                    if(rec.t < closestHit.t)
+                    if (rec.t < closestHit.t)
                     {
                         closestHit = rec;
                     }
@@ -243,52 +246,79 @@ namespace GPURayTracer.Rendering
 
             if (rngNext < reflectivity)
             {
-                return new BounceRecord(new Ray(hit.p, coneSample(Vec3.reflect(hit.normal, ray.b), material.reflectionConeAngleRadians, 0, 0)), true);
+                return new BounceRecord(new Ray(hit.p, coneSample(Vec3.reflect(hit.normal, ray.b), material.reflectionConeAngleRadians, 0, 0)), hit.materialID, true);
             }
             else
             {
-                return new BounceRecord(new Ray(hit.p, hemisphereSample(basis, 0, 0)), false);
+                return new BounceRecord(new Ray(hit.p, hemisphereSample(basis, 0, 0)), hit.materialID, false);
             }
         }
 
-        private static Vec3 ColorRay(int rngStartIndex, Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, ArrayView<float> rngData, Camera camera, int depth)
+        private static BounceRecord hitBounce(int rngStartIndex, Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, ArrayView<float> rngData, Camera camera)
         {
-            Vec3 result = new Vec3();
+            HitRecord hit = GetHit(ray, spheres);
 
-            if (depth >= camera.maxBounces)
+            if (hit.materialID == -1)
             {
-                return result;
+                return new BounceRecord(new Ray(), -1, false);
             }
             else
             {
-                HitRecord hit = GetHit(ray, spheres);
+                MaterialData material = materials[hit.materialID];
+                return Bounce(getNext(rngData, rngStartIndex), hit, ray, material);
+            }
+        }
 
-                if (hit.materialID == -1)
+        private static Vec3 ColorRay(int rngStartIndex, Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, ArrayView<float> rngData, Camera camera)
+        {
+            Vec3 result = new Vec3(1,1,1);
+
+            int bounceCount = 0;
+
+            BounceRecord[] bounces = new BounceRecord[15];
+
+            for (int i = 0; i < camera.maxBounces; i++)
+            {
+                BounceRecord record = hitBounce(rngStartIndex, ray, materials, spheres, rngData, camera);
+
+                if (record.MaterialID == -1)
                 {
-                    return new Vec3(0.2f, 0.2f, 0.5f);
+                    break;
                 }
                 else
                 {
-                    MaterialData material = materials[hit.materialID];
+                    bounces[bounceCount] = record;
+                    bounceCount++;
 
                     if (camera.diffuse)
                     {
-                        return material.diffuseColor;
+                        return materials[record.MaterialID].diffuseColor;
                     }
+                }
+            }
 
-                    BounceRecord record = Bounce(getNext(rngData, rngStartIndex + depth), hit, ray, material);
+            if (bounceCount == 0)
+            {
+                return new Vec3(0.2f, 0.2f, 0.5f);
+            }
+            else
+            {
+                for(int i = bounceCount; i >= 0; i--)
+                {
+                    BounceRecord record = bounces[i];
+                    MaterialData material = materials[record.MaterialID];
 
                     if (record.wasReflection)
                     {
-                        result += material.emmissiveColor + ColorRay(rngStartIndex, record.ray, materials, spheres, rngData, camera, depth + 1);
+                        result = material.emmissiveColor + result;
                     }
                     else
                     {
-                        result += material.emmissiveColor + material.diffuseColor * ColorRay(rngStartIndex, record.ray, materials, spheres, rngData, camera, depth + 1);
+                        result = material.emmissiveColor + material.diffuseColor * result;
                     }
-
-                    return result;
                 }
+
+                return result / bounceCount;
             }
         }
 
@@ -324,11 +354,13 @@ namespace GPURayTracer.Rendering
     internal readonly struct BounceRecord
     {
         public readonly Ray ray;
+        public readonly int MaterialID;
         public readonly bool wasReflection;
 
-        public BounceRecord(Ray ray, bool wasReflection)
+        public BounceRecord(Ray ray, int materialID, bool wasReflection)
         {
             this.ray = ray;
+            MaterialID = materialID;
             this.wasReflection = wasReflection;
         }
     }
