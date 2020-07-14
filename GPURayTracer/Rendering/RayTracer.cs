@@ -25,6 +25,7 @@ namespace GPURayTracer.Rendering
         public bool ready = false;
 
         private Thread RenderThread;
+
         public Context context;
         public Accelerator device;
 

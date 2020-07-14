@@ -70,7 +70,9 @@ namespace GPURayTracer.Rendering
                     device_materials = null;
                 }
 
-                device_materials = device.Allocate(materials.ToArray());
+                var temp = materials.ToArray();
+                device_materials = device.Allocate<MaterialData>(temp.Length);
+                device_materials.CopyFrom(temp, Index1.Zero, Index1.Zero, device_materials.Extent);
                 materialsDirty = false;
             }
 
@@ -101,7 +103,9 @@ namespace GPURayTracer.Rendering
                     device_spheres = null;
                 }
 
-                device_spheres = device.Allocate(spheres.ToArray());
+                var temp = spheres.ToArray();
+                device_spheres = device.Allocate<Sphere>(temp.Length);
+                device_spheres.CopyFrom(temp, Index1.Zero, Index1.Zero, device_spheres.Extent);
                 spheresDirty = false;
             }
 

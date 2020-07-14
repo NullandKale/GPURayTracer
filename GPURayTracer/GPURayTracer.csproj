@@ -9,9 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ILGPU" Version="0.8.1" />
+    <PackageReference Include="ILGPU" Version="0.8.0" />
     <PackageReference Include="ILGPU.Algorithms" Version="0.8.0" />
-    <PackageReference Include="ILGPU.Lightning" Version="0.3.0" />
     <PackageReference Include="System.Drawing.Common" Version="4.7.0" />
   </ItemGroup>
 

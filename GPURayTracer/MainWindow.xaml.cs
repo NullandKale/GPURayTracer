@@ -135,35 +135,16 @@ namespace GPURayTracer
             if(rtRenderer != null)
             {
                 rtRenderer.pause = true;
+
                 Thread.Sleep(1);
 
-
                 Point p = e.GetPosition(Frame);
+                
                 double frameWidth = Frame.ActualWidth;
                 double frameHeight = Frame.ActualHeight;
 
-                if (p.X > 0 && p.Y > 0 && p.X < frameWidth && p.Y < frameWidth)
-                {
-                    int size = (int)(width * 0.025);
-
-                    for (int i = -size; i <= size; i++)
-                    {
-                        int x = (int)((p.X / frameWidth) * width) + i;
-                        if (x > 0 && x < width)
-                        {
-                            for (int j = -size; j <= size; j++)
-                            {
-                                int y = (int)((p.Y / frameHeight) * height) + j;
-                                if (y > 0 && y < height)
-                                {
-                                    rtRenderer.output[(((y - 1) * width) + (x - 1)) * 3] = 255;
-                                    rtRenderer.output[((((y - 1) * width) + (x - 1)) * 3) + 1] = 0;
-                                    rtRenderer.output[((((y - 1) * width) + (x - 1)) * 3) + 2] = 0;
-                                }
-                            }
-                        }
-                    }
-                }
+                int x = (int)((p.X / frameWidth) * width);
+                int y = (int)((p.Y / frameHeight) * height);
 
                 rtRenderer.pause = false;
             }

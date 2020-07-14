@@ -36,7 +36,8 @@ namespace GPURayTracer.Rendering
                 rngData[i] = (float)rng.NextDouble();
             }
 
-            this.rngData = device.Allocate<float>(rngData);
+            this.rngData = device.Allocate<float>(rngData.Length);
+            this.rngData.CopyFrom(rngData, Index1.Zero, Index1.Zero, this.rngData.Extent);
         }
 
         public void changeSize(int width, int height, bool diffuse)
