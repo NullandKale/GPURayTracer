@@ -26,6 +26,16 @@ namespace GPURayTracer.Rendering.Primitives
             return new MaterialData(new Vec3(), diffuseColor, 0, 0, 0);
         }
 
+        public static MaterialData makeGlass(Vec3 diffuseColor)
+        {
+            return new MaterialData(new Vec3(), diffuseColor, 0, 0, 0);
+        }
+
+        public static MaterialData makeMirror(Vec3 diffuseColor)
+        {
+            return new MaterialData(new Vec3(), diffuseColor, 0, 0, 0);
+        }
+
         public static MaterialData makeLight(Vec3 emmissiveColor)
         {
             return new MaterialData(emmissiveColor, new Vec3(), 0, 0, 0);

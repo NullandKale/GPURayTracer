@@ -32,7 +32,7 @@ namespace GPURayTracer
         public double scale = -6;
         public int targetFPS = 60;
         public bool diffuseOnly = false;
-        public bool forceCPU = true;
+        public bool forceCPU = false;
 
         public FrameManager frame;
         public bool readyForUpdate = false;

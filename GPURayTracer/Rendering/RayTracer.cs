@@ -218,6 +218,64 @@ namespace GPURayTracer.Rendering
             return closestHit;
         }
 
+        private static HitRecord GetTriangleHit(Ray r, ArrayView<Triangle> triangles, ArrayView<Triangle> normals)
+        {
+            float currentNearestDist = float.MaxValue;
+            int NcurrentIndex = -1;
+            float Ndet = 0;
+            float Nu = 0;
+            float Nv = 0;
+
+            for(int i = 0; i < triangles.Length; i++)
+            {
+                Triangle t = triangles[i];
+                Vec3 tuVec = t.uVector();
+                Vec3 tvVec = t.vVector();
+                Vec3 pVec = Vec3.cross(r.b, tvVec);
+                float det = Vec3.dot(tuVec, pVec);
+
+                if (XMath.Abs(det) > 0.00001f)
+                {
+                    float invDet = 1.0f / det;
+                    Vec3 tVec = r.a - t.Vert0;
+                    float u = Vec3.dot(tVec, pVec) * invDet;
+                    Vec3 qVec = Vec3.cross(tVec, tuVec);
+                    float v = Vec3.dot(r.b, qVec);
+
+                    if (u < 0.0 || u > 1.0 || v < 0 || u + v > 1)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        float temp = Vec3.dot(tvVec, qVec) * invDet;
+                        if (temp > float.Epsilon && temp < currentNearestDist)
+                        {
+                            currentNearestDist = temp;
+                            NcurrentIndex = i;
+                            Ndet = det;
+                            Nu = u;
+                            Nv = v;
+                        }
+                    }
+                }
+            }
+
+            if(NcurrentIndex == -1)
+            {
+                return HitRecord.badHit;
+            }
+            else
+            {
+                Triangle tn = normals[NcurrentIndex];
+                Vec3 uNorm = tn.uVector();
+                Vec3 vNorm = tn.vVector();
+                Vec3 normal = Vec3.unitVector((Nu * uNorm) + (Nv * vNorm) + tn.Vert0);
+                bool backfacing = Ndet < float.Epsilon;
+                return new HitRecord(currentNearestDist, r.pointAtParameter(currentNearestDist), backfacing ? -normal : normal, backfacing, tn.MaterialID);
+            }
+        }
+
         private static BounceRecord Bounce(float rngNext, HitRecord hit, Ray ray, MaterialData material)
         {
             float iorFrom, iorTo, reflectivity;
@@ -254,7 +312,7 @@ namespace GPURayTracer.Rendering
             }
         }
 
-        private static BounceRecord hitBounce(int rngStartIndex, Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, ArrayView<float> rngData, Camera camera)
+        private static BounceRecord hitBounce(int rngStartIndex, Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, ArrayView<float> rngData)
         {
             HitRecord hit = GetHit(ray, spheres);
 
@@ -275,11 +333,11 @@ namespace GPURayTracer.Rendering
 
             int bounceCount = 0;
 
-            BounceRecord[] bounces = new BounceRecord[15];
+            BounceRecord[] bounces = new BounceRecord[5];
 
             for (int i = 0; i < camera.maxBounces; i++)
             {
-                BounceRecord record = hitBounce(rngStartIndex, ray, materials, spheres, rngData, camera);
+                BounceRecord record = hitBounce(rngStartIndex, ray, materials, spheres, rngData);
 
                 if (record.MaterialID == -1)
                 {
