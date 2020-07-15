@@ -29,8 +29,8 @@ namespace GPURayTracer
 
         public int width;
         public int height;
-        public double scale = -2;
-        public int targetFPS = 60;
+        public double scale = -5;
+        public int targetFPS = 10000;
         public bool diffuseOnly = false;
         public bool forceCPU = false;
 

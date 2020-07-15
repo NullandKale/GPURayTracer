@@ -166,28 +166,27 @@ namespace GPURayTracer.Rendering
 
         private static Vec3 ColorRay(int rngStartIndex, Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, ArrayView<float> rngData, Camera camera)
         {
-            Vec3 result = new Vec3(1, 1, 1);
+            Vec3 result = new Vec3();
 
             int bounceCount = 0;
 
-            BounceRecord[] bounces = new BounceRecord[6];
+            BounceRecord[] bounces = new BounceRecord[11];
 
             for (int i = 0; i < camera.maxBounces; i++)
             {
-                BounceRecord record = hitBounce(rngStartIndex, ray, materials, spheres, rngData);
+                bounces[bounceCount] = hitBounce(rngStartIndex, ray, materials, spheres, rngData);
 
-                if (record.MaterialID == -1)
+                if (bounces[bounceCount].MaterialID == -1)
                 {
                     break;
                 }
                 else
                 {
-                    bounces[bounceCount] = record;
                     bounceCount++;
 
                     if (camera.diffuse)
                     {
-                        return materials[record.MaterialID].diffuseColor;
+                        return materials[bounces[bounceCount].MaterialID].diffuseColor;
                     }
                 }
             }
@@ -251,14 +250,14 @@ namespace GPURayTracer.Rendering
                 {
                     float sqrtdisc = XMath.Sqrt(discr);
                     float temp = (-b - sqrtdisc) / a;
-                    if (temp < closestT && temp > 0.001f)
+                    if (temp < closestT && temp > float.Epsilon)
                     {
                         closestT = temp;
                         sphereIndex = i;
                         continue;
                     }
                     temp = (-b + sqrtdisc) / a;
-                    if (temp < closestT && temp > 0.001f)
+                    if (temp < closestT && temp >float.Epsilon)
                     {
                         closestT = temp;
                         sphereIndex = i;
