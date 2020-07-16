@@ -84,55 +84,29 @@ namespace GPURayTracer.Rendering
             }
         }
 
-        public static void NULLTAA(Index1 index, ArrayView<float> srcColor, ArrayView<float> srcZBuffer, ArrayView<int> srcSphereID, ArrayView<float> dstColor, ArrayView<float> dstZBuffer, ArrayView<int> dstSphereID, float minRadiance, int searchWidth, Camera camera)
+        public static void NULLTAA(Index1 index, ArrayView<float> srcColor, ArrayView<float> srcZBuffer, ArrayView<int> srcSphereID, ArrayView<float> dstColor, ArrayView<float> dstZBuffer, ArrayView<int> dstSphereID, float depthFuzz, float exponent)
         {
-            Vec3 color = new Vec3(srcColor[index * 3], srcColor[(index * 3) + 1], srcColor[(index * 3) + 2]);
+            Vec3 newColor = new Vec3(srcColor[index * 3], srcColor[(index * 3) + 1], srcColor[(index * 3) + 2]);
+            float newDepth = srcZBuffer[index];
+            int newID = srcSphereID[index];
 
-            if(color.x > minRadiance && color.y > minRadiance && color.z > minRadiance)
+            float lastDepth = dstZBuffer[index];
+            int lastID = dstSphereID[index];
+
+            if (XMath.Abs(newDepth - lastDepth) > depthFuzz || newDepth == 0)
             {
-                dstColor[(index * 3)]    = srcColor[(index * 3)];
-                dstColor[(index * 3) + 1] = srcColor[(index * 3) + 1];
-                dstColor[(index * 3) + 2] = srcColor[(index * 3) + 2];
+                dstColor[(index * 3)    ] = newColor.x;
+                dstColor[(index * 3) + 1] = newColor.y;
+                dstColor[(index * 3) + 2] = newColor.z;
             }
             else
             {
-                int x = ((index) % camera.width);
-                int y = ((index) / camera.width);
+                dstColor[(index * 3)]     = (exponent * newColor.x) + ((1 - exponent) * dstColor[(index * 3)]    );
+                dstColor[(index * 3) + 1] = (exponent * newColor.y) + ((1 - exponent) * dstColor[(index * 3) + 1]);
+                dstColor[(index * 3) + 2] = (exponent * newColor.z) + ((1 - exponent) * dstColor[(index * 3) + 2]);
 
-                int samples = 0;
-
-                for(int i = -searchWidth; i <= searchWidth; i++)
-                {
-                    int xPos = x + i;
-                    if (xPos >= 0 && xPos < camera.width)
-                    {
-                        for (int j = -searchWidth; j <= searchWidth; j++)
-                        {
-                            int yPos = y + j;
-                            if (yPos >= 0 && yPos < camera.height)
-                            {
-                                int newIndex = (yPos * camera.width) + xPos;
-                                Vec3 c = new Vec3(srcColor[newIndex * 3], srcColor[(newIndex * 3) + 1], srcColor[(newIndex * 3) + 2]);
-                                color += c;
-                                samples++;
-                            }
-                        }
-                    }
-                }
-
-                if(samples == 0)
-                {
-                    dstColor[(index * 3)] = srcColor[(index * 3)];
-                    dstColor[(index * 3) + 1] = srcColor[(index * 3) + 1];
-                    dstColor[(index * 3) + 2] = srcColor[(index * 3) + 2];
-                }
-                else
-                {
-                    color /= samples;
-                    dstColor[(index * 3)]     = color.x;
-                    dstColor[(index * 3) + 1] = color.y;
-                    dstColor[(index * 3) + 2] = color.z;
-                }
+                dstSphereID[index] = newID;
+                dstZBuffer[index] = newDepth;
             }
         }
     }

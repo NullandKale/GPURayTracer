@@ -24,7 +24,7 @@ namespace GPURayTracer.Rendering
             {
                 for(int j = 0; j < camera.MSAA; j++)
                 {
-                    rngIndex += 2;
+                    rngIndex += 3;
                     //ray = camera.GetRay(x + ((float)i / (float)camera.MSAA), y + ((float)j / (float)camera.MSAA));
                     ray = camera.GetRay(x + getNext(rngData, rngIndex), y + getNext(rngData, rngIndex + 1));
                     col += ColorRay(index, rngIndex + 2, ray, materials, spheres, Zbuffer, sphereIDBuffer, rngData, camera);
