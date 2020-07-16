@@ -29,9 +29,11 @@ namespace GPURayTracer
 
         public int width;
         public int height;
-        public double scale = -5;
-        public int targetFPS = 10000;
-        public bool diffuseOnly = false;
+
+        public double scale = -2;
+        public int MSAA = 1;
+        public int maxBounces = 10;
+        public int targetFPS = 30;
         public bool forceCPU = false;
 
         public FrameManager frame;
@@ -80,8 +82,7 @@ namespace GPURayTracer
 
             try
             {
-
-                rtRenderer = new RayTracer(frame, width, height, targetFPS, diffuseOnly, forceCPU);
+                rtRenderer = new RayTracer(frame, width, height, targetFPS, MSAA, maxBounces, forceCPU);
             }
             catch (Exception e)
             {
@@ -119,10 +120,13 @@ namespace GPURayTracer
                 {
                     displayTimer.endUpdate();
                     displayTimer.startUpdate();
-                    FPS.Content = "Render Device: " + rtRenderer.device.AcceleratorType.ToString() + " @: " + width + " x " + height +
-                        "\n" + (int)(rtRenderer.rFPStimer.averageUpdateRate) + " tps " + (int)displayTimer.averageUpdateRate + " dps" +
-                        "\nArrow up / down. Res Scale: " + scale + "\n"
-                        + (diffuseOnly ? "DIFFUSE ONLY DEBUG " : "Standard Lighting ") + " D to toggle";
+                    FPS.Content = rtRenderer.device.AcceleratorType.ToString() + " "
+                        + (rtRenderer.rFPStimer.averageUpdateRate <= displayTimer.averageUpdateRate 
+                        ? ((int)(rtRenderer.rFPStimer.averageUpdateRate) + " FPS") 
+                        : ((int)displayTimer.averageUpdateRate + " FPS WPF LIMITED"));
+                    debug.Content = "[ " + width + ", " + height + " ]" + " SF: " + scale + " Sample Per Pixel: " + MSAA;
+                    renderScale.Content = "Scale Factor: " + scale;
+                    samples.Content = "Sample Per Pixel: " + MSAA;
                     frame.update();
                 }
                 readyForUpdate = false;
@@ -152,41 +156,6 @@ namespace GPURayTracer
 
         private void Window_MouseMove(object sender, MouseEventArgs e)
         {
-            if(rtRenderer != null)
-            {
-                if (e.LeftButton == MouseButtonState.Pressed)
-                {
-                    rtRenderer.pause = true;
-                    Point p = e.GetPosition(Frame);
-                    double frameWidth = Frame.ActualWidth;
-                    double frameHeight = Frame.ActualHeight;
-
-                    if (p.X > 0 && p.Y > 0 && p.X < frameWidth && p.Y < frameHeight)
-                    {
-                        int size = (int)(width * 0.025);
-
-                        for (int i = -size; i <= size; i++)
-                        {
-                            int x = (int)((p.X / frameWidth) * width) + i;
-                            if (x > 0 && x < width)
-                            {
-                                for (int j = -size; j <= size; j++)
-                                {
-                                    int y = (int)((p.Y / frameHeight) * height) + j;
-                                    if (y > 0 && y < height)
-                                    {
-                                        rtRenderer.output[(((y - 1) * width) + (x - 1)) * 3] = 255;
-                                        rtRenderer.output[((((y - 1) * width) + (x - 1)) * 3) + 1] = 0;
-                                        rtRenderer.output[((((y - 1) * width) + (x - 1)) * 3) + 2] = 0;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    rtRenderer.pause = false;
-                }
-            }
         }
 
         private void Window_KeyDown(object sender, KeyEventArgs e)
@@ -208,32 +177,6 @@ namespace GPURayTracer
                 Window_SizeChanged(sender, null);
             }
 
-            if (e.Key == Key.Up)
-            {
-                scale++;
-                if (scale == 0)
-                {
-                    scale = 1;
-                }
-                Window_SizeChanged(sender, null);
-            }
-
-            if (e.Key == Key.Down)
-            {
-                scale--;
-                if (scale == 0)
-                {
-                    scale = -1;
-                }
-                Window_SizeChanged(sender, null);
-            }
-
-            if (e.Key == Key.D)
-            {
-                diffuseOnly = !diffuseOnly;
-                Window_SizeChanged(sender, null);
-            }
-
             if (e.Key == Key.C)
             {
                 forceCPU = !forceCPU;
@@ -245,5 +188,50 @@ namespace GPURayTracer
                 Close();
             }
         }
+
+        private void SFMinus_Click(object sender, RoutedEventArgs e)
+        {
+            scale--;
+            if (scale == 0)
+            {
+                scale = -1;
+            }
+            Window_SizeChanged(sender, null);
+        }
+
+        private void SFPlus_Click(object sender, RoutedEventArgs e)
+        {
+            scale++;
+            if (scale == 0)
+            {
+                scale = 1;
+            }
+            Window_SizeChanged(sender, null);
+        }
+
+        private void SFDef_Click(object sender, RoutedEventArgs e)
+        {
+            scale = -2;
+            Window_SizeChanged(sender, null);
+        }
+
+        private void SampleMinus_Click(object sender, RoutedEventArgs e)
+        {
+            MSAA--;
+            Window_SizeChanged(sender, null);
+        }
+
+        private void SamplePlus_Click(object sender, RoutedEventArgs e)
+        {
+            MSAA++;
+            Window_SizeChanged(sender, null);
+        }
+
+        private void SampleDef_Click(object sender, RoutedEventArgs e)
+        {
+            MSAA = 2;
+            Window_SizeChanged(sender, null);
+        }
+
     }
 }

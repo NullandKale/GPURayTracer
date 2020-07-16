@@ -5,13 +5,24 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GPURayTracer"
         mc:Ignorable="d"
-        Title="MainWindow" WindowStyle="SingleBorderWindow" WindowState="Normal" Height="720" Width="1280" Background="Black" KeyDown="Window_KeyDown" MouseMove="Window_MouseMove" MouseLeftButtonDown="Frame_MouseDown">
+        Title="NULLrender" WindowStyle="SingleBorderWindow" WindowState="Normal" Height="720" Width="1280" Background="Black" KeyDown="Window_KeyDown" MouseMove="Window_MouseMove" MouseLeftButtonDown="Frame_MouseDown">
     <Grid Name="grid">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="4*"/>
-            <RowDefinition Height="0"/>
-        </Grid.RowDefinitions>
-        <Image Name="Frame" Grid.Row="0" Stretch="Uniform" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
-        <Label Name="FPS" Grid.Row="0" Content="" FontSize="16" Foreground="White" Padding="30"/>
+        <Image Name="Frame" Stretch="Uniform" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+        <StackPanel Margin="30">
+            <Label Name="FPS" Content="FPS: " FontSize="12" Foreground="Black" />
+            <Label Name="debug" Content="RES: " FontSize="12" Foreground="Black" />
+            <Label Name="renderScale"  Content="Render Scale: " FontSize="12" Foreground="Black" />
+            <StackPanel Orientation="Horizontal">
+                <Button Content="-" Width="25" Height="25" Margin="5" Click="SFMinus_Click"/>
+                <Button Content="Default : -2" Height="25" Margin="5" Click="SFDef_Click"/>
+                <Button Content="+" Width="25" Height="25" Margin="5" Click="SFPlus_Click"/>
+            </StackPanel>
+            <Label Name="samples" Content="Sample Per Pixel: " FontSize="12" Foreground="Black" />
+            <StackPanel Orientation="Horizontal">
+                <Button Content="-" Width="25" Height="25" Margin="5" Click="SampleMinus_Click"/>
+                <Button Content="Default : 2" Height="25" Margin="5"  Click="SampleDef_Click"/>
+                <Button Content="+" Width="25" Height="25" Margin="5" Click="SamplePlus_Click"/>
+            </StackPanel>
+        </StackPanel>
     </Grid>
 </Window>

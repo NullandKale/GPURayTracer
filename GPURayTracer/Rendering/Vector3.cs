@@ -1,6 +1,7 @@
 ﻿using ILGPU.Algorithms;
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace GPURayTracer.Rendering
@@ -118,6 +119,12 @@ namespace GPURayTracer.Rendering
             return new Vec3(v1.x + v, v1.y + v, v1.z + v);
         }
 
+
+        //public static Vec3 operator /(Vec3 v1, float v)
+        //{
+        //    float desc = 1.0f / v;
+        //    return v1 * desc;
+        //}
 
         public static Vec3 operator /(Vec3 v1, float v)
         {

@@ -25,18 +25,10 @@ namespace GPURayTracer.Rendering
             spheres = new List<Sphere>();
             materials = new List<MaterialData>();
 
-            addMaterial(MaterialData.makeLight(new Vec3(10, 10, 10) * 5));
-            addMaterial(MaterialData.makeDiffuse(new Vec3(1, 0.01, 0.01)));
-            addMaterial(MaterialData.makeDiffuse(new Vec3(0.01, 1, 0.01)));
-            addMaterial(MaterialData.makeDiffuse(new Vec3(0.01, 0.01, 1)));
-            addMaterial(MaterialData.makeDiffuse(new Vec3(0.75, 0.01, 0.75)));
-
-            addSphere(new Sphere(new Vec3(0,  0, 0), 0.5f, 0));
-            addSphere(new Sphere(new Vec3(2,  0, 0), 0.5f, 1));
-            addSphere(new Sphere(new Vec3(-2, 0, 0), 0.5f, 2));
-            addSphere(new Sphere(new Vec3(0, -2, 0), 0.5f, 3));
-            addSphere(new Sphere(new Vec3(0,  2, 0), 0.5f, 4));
-            addSphere(new Sphere(new Vec3(0,  2, 0), 0.5f, 4));
+            addSphere(new Sphere(new Vec3(0, 0, -1), 0.5f, addMaterial(MaterialData.makeDiffuse(new Vec3(0.7, 0.3, 0.3)))));
+            addSphere(new Sphere(new Vec3(0, 100.5, -1), 100, addMaterial(MaterialData.makeDiffuse(new Vec3(0.8, 0.8, 0.0)))));
+            addSphere(new Sphere(new Vec3(1, 0, -1),  0.5f, addMaterial(MaterialData.makeMirror(new Vec3(0.8, 0.6, 0.2), 0))));
+            addSphere(new Sphere(new Vec3(-1, 0,-1), 0.5f, addMaterial(MaterialData.makeMirror(new Vec3(0.8, 0.8, 0.8), 0))));
         }
 
         public int addMaterial(MaterialData toAdd)

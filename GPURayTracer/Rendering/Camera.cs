@@ -10,8 +10,7 @@ namespace GPURayTracer.Rendering
         public readonly int height;
         public readonly int width;
         public readonly int maxBounces;
-
-        public readonly bool diffuse;
+        public readonly int MSAA;
 
         public readonly Vec3 origin;
         public readonly OrthoNormalBasis axis;
@@ -23,12 +22,12 @@ namespace GPURayTracer.Rendering
         public readonly float apertureRadius;
         public readonly float focalDistance;
 
-        public Camera(Vec3 origin, Vec3 lookAt, Vec3 up, int width, int height, int maxBounces, float verticalFov, bool diffuseOnly, Vec3 focalPoint, float apertureRadius)
+        public Camera(Vec3 origin, Vec3 lookAt, Vec3 up, int width, int height, int maxBounces, int MSAA, float verticalFov, Vec3 focalPoint, float apertureRadius)
         {
             this.width = width;
             this.height = height;
             this.maxBounces = maxBounces;
-            this.diffuse = diffuseOnly;
+            this.MSAA = MSAA;
 
             this.origin = origin;
             axis = OrthoNormalBasis.fromZY(Vec3.unitVector(lookAt - origin), up);
