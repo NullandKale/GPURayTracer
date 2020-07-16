@@ -31,9 +31,9 @@ namespace GPURayTracer
         public int height;
 
         public double scale = -2;
-        public int MSAA = 1;
+        public int MSAA = 0;
         public int maxBounces = 10;
-        public int targetFPS = 30;
+        public int targetFPS = 60;
         public bool forceCPU = false;
 
         public FrameManager frame;

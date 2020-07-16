@@ -14,13 +14,13 @@
             <Label Name="renderScale"  Content="Render Scale: " FontSize="12" Foreground="Black" />
             <StackPanel Orientation="Horizontal">
                 <Button Content="-" Width="25" Height="25" Margin="5" Click="SFMinus_Click"/>
-                <Button Content="Default : -2" Height="25" Margin="5" Click="SFDef_Click"/>
+                <Button Content="Default : -1" Height="25" Margin="5" Click="SFDef_Click"/>
                 <Button Content="+" Width="25" Height="25" Margin="5" Click="SFPlus_Click"/>
             </StackPanel>
             <Label Name="samples" Content="Sample Per Pixel: " FontSize="12" Foreground="Black" />
             <StackPanel Orientation="Horizontal">
                 <Button Content="-" Width="25" Height="25" Margin="5" Click="SampleMinus_Click"/>
-                <Button Content="Default : 2" Height="25" Margin="5"  Click="SampleDef_Click"/>
+                <Button Content="Default : 0" Height="25" Margin="5"  Click="SampleDef_Click"/>
                 <Button Content="+" Width="25" Height="25" Margin="5" Click="SamplePlus_Click"/>
             </StackPanel>
         </StackPanel>
