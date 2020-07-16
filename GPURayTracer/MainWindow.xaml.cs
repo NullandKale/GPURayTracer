@@ -27,10 +27,12 @@ namespace GPURayTracer
     {
         public RayTracer rtRenderer;
 
+        public static bool debugZbuffer = false;
+
         public int width;
         public int height;
 
-        public double scale = -2;
+        public double scale = -1;
         public int MSAA = 0;
         public int maxBounces = 10;
         public int targetFPS = 60;
@@ -181,6 +183,11 @@ namespace GPURayTracer
             {
                 forceCPU = !forceCPU;
                 Window_SizeChanged(sender, null);
+            }
+
+            if (e.Key == Key.D)
+            {
+                debugZbuffer = !debugZbuffer;
             }
 
             if (e.Key == Key.Escape)

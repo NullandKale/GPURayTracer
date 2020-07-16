@@ -29,9 +29,11 @@ namespace GPURayTracer.Rendering
         public Context context;
         public Accelerator device;
 
-        Action<Index1, ArrayView<float>, ArrayView<float>, ArrayView<MaterialData>, ArrayView<Sphere>, Camera, int> renderKernel;
+        Action<Index1, ArrayView<float>, ArrayView<float>, ArrayView<int>, ArrayView<float>, ArrayView<MaterialData>, ArrayView<Sphere>, Camera, int> renderKernel;
+        Action<Index1, ArrayView<float>, ArrayView<float>, ArrayView<int>, ArrayView<float>, ArrayView<float>, ArrayView<int>, float, int, Camera> filterKernel;
+        Action<Index1, ArrayView<float>, float, float> normalizeKernel;
         Action<Index1, ArrayView<float>, ArrayView<byte>, Camera> outputKernel;
-        Action<Index1, ArrayView<float>, ArrayView<float>, float, int, Camera> filterKernel;
+        Action<Index1, ArrayView<float>, ArrayView<byte>, Camera> outputZbufferKernel;
 
         public byte[] output;
         FrameManager frame;
@@ -62,9 +64,11 @@ namespace GPURayTracer.Rendering
 
             rFPStimer = new UpdateStatsTimer();
 
+            normalizeKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, float, float>(Kernels.Normalize);
             outputKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<byte>, Camera>(Kernels.CreatBitmap);
-            filterKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<float>, float, int, Camera>(Kernels.RadianceFuzz);
-            renderKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<float>, ArrayView<MaterialData>, ArrayView<Sphere>, Camera, int>(RTKernels.RenderKernel);
+            outputZbufferKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<byte>, Camera>(Kernels.CreateGrayScaleBitmap);
+            filterKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<float>, ArrayView<int>, ArrayView<float>, ArrayView<float>, ArrayView<int>, float, int, Camera>(Kernels.NULLTAA);
+            renderKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<float>, ArrayView<int>, ArrayView<float>, ArrayView<MaterialData>, ArrayView<Sphere>, Camera, int>(RTKernels.RenderKernel);
 
             startRenderThread();
         }
@@ -147,14 +151,24 @@ namespace GPURayTracer.Rendering
 
         public void generateFrame()
         {
-            renderKernel(frameData.rawFrameBuffer.Extent / 3, frameData.rawFrameBuffer, frameData.rngData, worldData.getDeviceMaterials(), worldData.getDeviceSpheres(), frameData.camera, tick++);
+            renderKernel(frameData.ColorFrameBuffer0.Extent / 3, frameData.ColorFrameBuffer0, frameData.ZBuffer0, frameData.SphereIDBuffer0, frameData.rngData, worldData.getDeviceMaterials(), worldData.getDeviceSpheres(), frameData.camera, tick++);
+
+            (float min, float max) = Kernels.ReduceMax(device, frameData.ZBuffer0);
+
+            normalizeKernel(frameData.ZBuffer0.Extent, frameData.ZBuffer0, min, max);
 
             //Test filter
             //filterKernel(frameData.rawFrameBuffer.Extent / 3, frameData.rawFrameBuffer, frameData.filteredFrameBuffer, float.Epsilon, 0, frameData.camera);
 
             //outputKernel(frameData.filteredFrameBuffer.Extent / 3, frameData.filteredFrameBuffer, frameData.bitmapData, frameData.camera);
-
-            outputKernel(frameData.rawFrameBuffer.Extent / 3, frameData.rawFrameBuffer, frameData.bitmapData, frameData.camera);
+            if(MainWindow.debugZbuffer)
+            {
+                outputZbufferKernel(frameData.ZBuffer0.Extent, frameData.ZBuffer0, frameData.bitmapData, frameData.camera);
+            }
+            else
+            {
+                outputKernel(frameData.ColorFrameBuffer0.Extent / 3, frameData.ColorFrameBuffer0, frameData.bitmapData, frameData.camera);
+            }
 
             device.Synchronize();
 

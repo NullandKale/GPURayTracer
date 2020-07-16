@@ -11,8 +11,16 @@ namespace GPURayTracer.Rendering
         private Accelerator device;
 
         public Camera camera;
-        public MemoryBuffer<float> rawFrameBuffer;
-        public MemoryBuffer<float> filteredFrameBuffer;
+
+        public MemoryBuffer<float> ColorFrameBuffer0;
+        public MemoryBuffer<float> ZBuffer0;
+        public MemoryBuffer<int> SphereIDBuffer0;
+
+        public MemoryBuffer<float> ColorFrameBuffer1;
+        public MemoryBuffer<float> ZBuffer1;
+        public MemoryBuffer<int> SphereIDBuffer1;
+
+        public MemoryBuffer<float> finalFrameBuffer;
         public MemoryBuffer<byte> bitmapData;
         public MemoryBuffer<float> rngData;
         public FrameData(Accelerator device, int width, int height, int MSAA, int maxBounces)
@@ -43,14 +51,29 @@ namespace GPURayTracer.Rendering
         public void changeSize(int width, int height, int MSAA, int maxBounces)
         {
             camera = new Camera(new Vec3(0, 0, -4), new Vec3(0,0,0), Vec3.unitVector(new Vec3(0, 1, 0)), width, height, maxBounces, MSAA, 40f, new Vec3(), 0);
-            rawFrameBuffer = device.Allocate<float>(width * height * 3);
-            filteredFrameBuffer = device.Allocate<float>(width * height * 3);
+            
+            finalFrameBuffer = device.Allocate<float>(width * height * 3);
+
+            ColorFrameBuffer0 = device.Allocate<float>(width * height * 3);
+            ZBuffer0 = device.Allocate<float>(width * height);
+            SphereIDBuffer0 = device.Allocate<int>(width * height);
+
+            ColorFrameBuffer1 = device.Allocate<float>(width * height * 3);
+            ZBuffer1 = device.Allocate<float>(width * height);
+            SphereIDBuffer1 = device.Allocate<int>(width * height);
+
             bitmapData = device.Allocate<byte>(width * height * 3);
         }
 
         public void Dispose()
         {
-            rawFrameBuffer.Dispose();
+            finalFrameBuffer.Dispose();
+            ColorFrameBuffer0.Dispose();
+            ZBuffer0.Dispose();
+            SphereIDBuffer0.Dispose();
+            ColorFrameBuffer1.Dispose();
+            ZBuffer1.Dispose();
+            SphereIDBuffer1.Dispose();
             bitmapData.Dispose();
         }
     }
