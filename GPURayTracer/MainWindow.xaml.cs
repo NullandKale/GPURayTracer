@@ -30,6 +30,7 @@ namespace GPURayTracer
 
         public static bool debugZbuffer = false;
         public static bool debugTAA = true;
+        public static bool debugRandomGeneration = true;
 
         public int width;
         public int height;
@@ -37,7 +38,7 @@ namespace GPURayTracer
         public double scale = -1;
         public int MSAA = 0;
         public int maxBounces = 10;
-        public int targetFPS = 70;
+        public int targetFPS = 700000;
         public bool forceCPU = false;
         public Point? lastMousePos;
         public bool mouseDebounce = true;
@@ -141,7 +142,8 @@ namespace GPURayTracer
                     FPS.Content = rtRenderer.device.AcceleratorType.ToString() + " "
                         + (rtRenderer.rFPStimer.averageUpdateRate <= displayTimer.averageUpdateRate 
                         ? ((int)(rtRenderer.rFPStimer.averageUpdateRate) + " FPS") 
-                        : ((int)displayTimer.averageUpdateRate + " FPS WPF LIMITED"));
+                        : ((int)displayTimer.averageUpdateRate + " FPS WPF LIMITED")) + getWindowState();
+                    camera.Content = string.Format("Pos: {0:0.##}, {1:0.##} {2:0.##}", rtRenderer.frameData.camera.origin.x, rtRenderer.frameData.camera.origin.y, rtRenderer.frameData.camera.origin.z);
                     debug.Content = "[ " + width + ", " + height + " ]" + " SF: " + scale + " Sample Per Pixel: " + MSAA;
                     renderScale.Content = "Scale Factor: " + scale;
                     samples.Content = "Sample Per Pixel: " + MSAA;
@@ -150,6 +152,30 @@ namespace GPURayTracer
                 readyForUpdate = false;
             }
 
+        }
+
+        private string getWindowState()
+        {
+            string toReturn = " ";
+            if(debugRandomGeneration)
+            {
+                toReturn += "HFP Noise ";
+            }
+            else
+            {
+                toReturn += "White Noise ";
+            }
+
+            if (debugZbuffer)
+            {
+                toReturn += "Z Buffer ";
+            }
+            else if (debugTAA)
+            {
+                toReturn += "TAA ";
+            }
+
+            return toReturn;
         }
 
         private void Window_KeyDown(object sender, KeyEventArgs e)
@@ -196,7 +222,8 @@ namespace GPURayTracer
 
             if (e.Key == Key.U)
             {
-                debugTAA = !debugTAA;
+                debugRandomGeneration = !debugRandomGeneration;
+                Window_SizeChanged(sender, null);
             }
 
             if (e.Key == Key.Escape)

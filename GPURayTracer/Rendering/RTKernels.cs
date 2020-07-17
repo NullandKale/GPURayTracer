@@ -10,7 +10,10 @@ namespace GPURayTracer.Rendering
 {
     public static class RTKernels
     {
-        public static void RenderKernel(Index1 index, ArrayView<float> diffuseFrameData, ArrayView<float> Zbuffer, ArrayView<int> sphereIDBuffer, ArrayView<float> rngData, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, Camera camera, int rngOffset)
+        public static void RenderKernel(Index1 index, 
+            ArrayView<float> diffuseFrameData, ArrayView<float> Zbuffer, ArrayView<int> sphereIDBuffer, 
+            ArrayView<float> rngData, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, ArrayView<Triangle> triangles, ArrayView<Triangle> triNorms, 
+            Camera camera, int rngOffset)
         {
             int x = ((index) % camera.width);
             int y = ((index) / camera.width);
@@ -18,7 +21,7 @@ namespace GPURayTracer.Rendering
             int rngIndex = rngOffset + (int)(index * getNext(rngData, index) * 2.0f);
 
             Ray ray = camera.GetRay(x + getNext(rngData, rngIndex), y + getNext(rngData, rngIndex + 1));
-            Vec3 col = ColorRay(index, rngIndex + 2, ray, materials, spheres, Zbuffer, sphereIDBuffer, rngData, camera);
+            Vec3 col = ColorRay(index, rngIndex + 2, ray, materials, spheres, triangles, triNorms, Zbuffer, sphereIDBuffer, rngData, camera);
 
             for (int i = 0; i < camera.MSAA; i++)
             {
@@ -32,7 +35,7 @@ namespace GPURayTracer.Rendering
                     //randomly distributed multi Samples
                     ray = camera.GetRay(x + getNext(rngData, rngIndex), y + getNext(rngData, rngIndex + 1));
 
-                    col += ColorRay(index, rngIndex + 2, ray, materials, spheres, Zbuffer, sphereIDBuffer, rngData, camera);
+                    col += ColorRay(index, rngIndex + 2, ray, materials, spheres, triangles, triNorms, Zbuffer, sphereIDBuffer, rngData, camera);
                 }
             }
 
@@ -46,7 +49,7 @@ namespace GPURayTracer.Rendering
             diffuseFrameData[(index * 3) + 2] = col.z;
         }
 
-        private static Vec3 ColorRay(int index, int rngStartIndex, Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, ArrayView<float> Zbuffer, ArrayView<int> sphereIDBuffer, ArrayView<float> rngData, Camera camera)
+        private static Vec3 ColorRay(int index, int rngStartIndex, Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, ArrayView<Triangle> triangles, ArrayView<Triangle> triNorms, ArrayView<float> Zbuffer, ArrayView<int> sphereIDBuffer, ArrayView<float> rngData, Camera camera)
         {
             Vec3 attenuation = new Vec3(1, 1, 1);
             Ray working = ray;
@@ -54,6 +57,13 @@ namespace GPURayTracer.Rendering
             for(int i = 0; i < camera.maxBounces; i++)
             {
                 HitRecord rec = GetSphereHit(working, spheres);
+                //HitRecord triRec = GetTriangleHit(working, triangles, triNorms);
+                
+                //if(triRec.t < rec.t)
+                //{
+                //    rec = triRec;
+                //}
+
                 if(rec.materialID == -1)
                 {
                     if (i == 0)

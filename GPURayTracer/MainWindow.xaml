@@ -10,6 +10,7 @@
         <Image Name="Frame" Stretch="Uniform" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
         <StackPanel Margin="30" HorizontalAlignment="Left" VerticalAlignment="Top">
             <Label Name="FPS" Content="FPS: " FontSize="12" Foreground="Black" />
+            <Label Name="camera" Content="" FontSize="12" Foreground="Black" />
             <Label Name="debug" Content="RES: " FontSize="12" Foreground="Black" />
             <Label Name="renderScale"  Content="Render Scale: " FontSize="12" Foreground="Black" />
             <StackPanel Orientation="Horizontal">

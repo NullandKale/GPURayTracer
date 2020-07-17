@@ -88,7 +88,6 @@ namespace GPURayTracer.Rendering
             ArrayView<float> dstColor, ArrayView<float> dstZBuffer, ArrayView<int> dstSphereID, 
             float depthFuzz, float exponent, int tick)
         {
-            Vec3 newColor = new Vec3(srcColor[index * 3], srcColor[(index * 3) + 1], srcColor[(index * 3) + 2]);
 
             float newDepth = srcZBuffer[index];
             int newID = srcSphereID[index];
@@ -96,16 +95,20 @@ namespace GPURayTracer.Rendering
             float lastDepth = dstZBuffer[index];
             int lastID = dstSphereID[index];
 
-            if(newID == -2)
+            int rIndex = index * 3;
+            int gIndex = rIndex + 1;
+            int bIndex = gIndex + 1;
+
+            if (newID == -2)
             {
                 return;
             }
             
             if (XMath.Abs(newDepth - lastDepth) > depthFuzz || tick == 0 || newID != lastID || newID == -1)
             {
-                dstColor[(index * 3)    ] = newColor.x;
-                dstColor[(index * 3) + 1] = newColor.y;
-                dstColor[(index * 3) + 2] = newColor.z;
+                dstColor[(index * 3)    ] = srcColor[rIndex];
+                dstColor[(index * 3) + 1] = srcColor[gIndex];
+                dstColor[(index * 3) + 2] = srcColor[bIndex];
 
                 dstSphereID[index] = newID;
                 dstZBuffer[index] = newDepth;
@@ -114,18 +117,18 @@ namespace GPURayTracer.Rendering
             {
                 if(tick < 1 / exponent)
                 {
-                    dstColor[(index * 3)] = ((1.0f / tick) * newColor.x)     + ((1 - (1.0f / tick)) * dstColor[(index * 3)]);
-                    dstColor[(index * 3) + 1] = ((1.0f / tick) * newColor.y) + ((1 - (1.0f / tick)) * dstColor[(index * 3) + 1]);
-                    dstColor[(index * 3) + 2] = ((1.0f / tick) * newColor.z) + ((1 - (1.0f / tick)) * dstColor[(index * 3) + 2]);
+                    dstColor[(index * 3)] = ((1.0f / tick) * srcColor[rIndex])     + ((1 - (1.0f / tick)) * dstColor[(index * 3)]);
+                    dstColor[(index * 3) + 1] = ((1.0f / tick) * srcColor[gIndex]) + ((1 - (1.0f / tick)) * dstColor[(index * 3) + 1]);
+                    dstColor[(index * 3) + 2] = ((1.0f / tick) * srcColor[bIndex]) + ((1 - (1.0f / tick)) * dstColor[(index * 3) + 2]);
 
                     dstSphereID[index] = newID;
                     dstZBuffer[index] = newDepth;
                 }
                 else
                 {
-                    dstColor[(index * 3)] = (exponent * newColor.x) + ((1 - exponent) * dstColor[(index * 3)]);
-                    dstColor[(index * 3) + 1] = (exponent * newColor.y) + ((1 - exponent) * dstColor[(index * 3) + 1]);
-                    dstColor[(index * 3) + 2] = (exponent * newColor.z) + ((1 - exponent) * dstColor[(index * 3) + 2]);
+                    dstColor[(index * 3)] = (exponent     * srcColor[rIndex]) + ((1 - exponent) * dstColor[(index * 3)]);
+                    dstColor[(index * 3) + 1] = (exponent * srcColor[gIndex]) + ((1 - exponent) * dstColor[(index * 3) + 1]);
+                    dstColor[(index * 3) + 2] = (exponent * srcColor[bIndex]) + ((1 - exponent) * dstColor[(index * 3) + 2]);
 
                     dstSphereID[index] = newID;
                     dstZBuffer[index] = newDepth;
