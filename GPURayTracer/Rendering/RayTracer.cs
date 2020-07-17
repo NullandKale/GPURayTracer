@@ -202,7 +202,7 @@ namespace GPURayTracer.Rendering
                 filterKernel(frameData.ColorFrameBuffer0.Extent / 3,
                     frameData.ColorFrameBuffer0, frameData.ZBuffer0, frameData.SphereIDBuffer0,
                     frameData.ColorFrameBuffer1, frameData.ZBuffer1, frameData.SphereIDBuffer1,
-                    2, 0.5f, tick);
+                    0.5f, MainWindow.debugTAAScale, tick);
                 outputKernel(frameData.ColorFrameBuffer1.Extent / 3, frameData.ColorFrameBuffer1, frameData.bitmapData, frameData.camera);
             }
             else

@@ -31,6 +31,7 @@ namespace GPURayTracer
         public static bool debugZbuffer = false;
         public static bool debugTAA = true;
         public static bool debugRandomGeneration = true;
+        public static float debugTAAScale = 0.95f;
 
         public int width;
         public int height;
@@ -38,7 +39,7 @@ namespace GPURayTracer
         public double scale = -1;
         public int MSAA = 0;
         public int maxBounces = 10;
-        public int targetFPS = 700000;
+        public int targetFPS = 60;
         public bool forceCPU = false;
         public Point? lastMousePos;
         public bool mouseDebounce = true;
@@ -55,6 +56,18 @@ namespace GPURayTracer
             Closed += MainWindow_Closed;
             SizeChanged += Window_SizeChanged;
             Frame.Cursor = Cursors.None;
+            taaLabel.Content = debugTAA && !debugZbuffer ? string.Format("TAA ON # {0:0.##}", debugTAAScale) : "TAA OFF";
+            taaSlider.Value = debugTAAScale;
+
+            instructions.Content =
+                "Keys\n" +
+                "O: Toggle fullscreen\n" +
+                "E: Toggle mouse capture\n" +
+                "C: Toggle CPU / GPU Render\n" +
+                "T: Toggle TAA\n" +
+                "Y: Toggle Z Buffer display\n" +
+                "U: Toggle Random Generation Style\n" +
+                "Esc: Exit\n";
         }
 
         private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -316,6 +329,18 @@ namespace GPURayTracer
                     }
                 }
             }
+        }
+
+        private void TaaToggleClick(object sender, RoutedEventArgs e)
+        {
+            debugTAA = !debugTAA;
+            taaLabel.Content = debugTAA && !debugZbuffer ? string.Format("TAA ON # {0:0.##}", debugTAAScale) : "TAA OFF";
+        }
+
+        private void taaSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            debugTAAScale = (float)e.NewValue;
+            taaLabel.Content = debugTAA && !debugZbuffer ? string.Format("TAA ON # {0:0.##}", debugTAAScale) : "TAA OFF";
         }
     }
 }

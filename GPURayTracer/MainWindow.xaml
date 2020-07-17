@@ -8,6 +8,9 @@
         Title="NULLrender" WindowStyle="SingleBorderWindow" WindowState="Maximized" Height="720" Width="1280" Background="Black" KeyDown="Window_KeyDown">
     <Grid Name="grid" MouseMove="Window_MouseMove">
         <Image Name="Frame" Stretch="Uniform" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+        <StackPanel Margin="30" HorizontalAlignment="Right" VerticalAlignment="Top">
+            <Label Name="instructions" FontSize="12" Foreground="Black" />
+        </StackPanel>
         <StackPanel Margin="30" HorizontalAlignment="Left" VerticalAlignment="Top">
             <Label Name="FPS" Content="FPS: " FontSize="12" Foreground="Black" />
             <Label Name="camera" Content="" FontSize="12" Foreground="Black" />
@@ -24,6 +27,9 @@
                 <Button Content="Default : 0" Height="25" Margin="5"  Click="SampleDef_Click"/>
                 <Button Content="+" Width="25" Height="25" Margin="5" Click="SamplePlus_Click"/>
             </StackPanel>
+            <Button Content="TAA Toggle" Click="TaaToggleClick" />
+            <Label Name="taaLabel" Content="TAA: " FontSize="12" Foreground="Black" />
+            <Slider Name="taaSlider" Minimum="0" Maximum="1" LargeChange="0.1" ValueChanged="taaSlider_ValueChanged"/>
         </StackPanel>
     </Grid>
 </Window>

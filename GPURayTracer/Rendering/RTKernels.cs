@@ -18,7 +18,7 @@ namespace GPURayTracer.Rendering
             int x = ((index) % camera.width);
             int y = ((index) / camera.width);
 
-            int rngIndex = rngOffset + (int)(index * getNext(rngData, index) * 2.0f);
+            int rngIndex = rngOffset + index + (int)(index * getNext(rngData, index) * 2.0f);
 
             Ray ray = camera.GetRay(x + getNext(rngData, rngIndex), y + getNext(rngData, rngIndex + 1));
             Vec3 col = ColorRay(index, rngIndex + 2, ray, materials, spheres, triangles, triNorms, Zbuffer, sphereIDBuffer, rngData, camera);
