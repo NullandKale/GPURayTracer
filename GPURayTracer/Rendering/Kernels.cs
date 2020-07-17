@@ -50,7 +50,6 @@ namespace GPURayTracer.Rendering
         {
             return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
         }
-
         public static void Normalize(Index1 index, ArrayView<float> data, float min, float max)
         {
             data[index] = map(data[index], min, max, 0, 1);

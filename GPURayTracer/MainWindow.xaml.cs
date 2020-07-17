@@ -37,10 +37,11 @@ namespace GPURayTracer
         public double scale = -1;
         public int MSAA = 0;
         public int maxBounces = 10;
-        public int targetFPS = 60;
+        public int targetFPS = 70;
         public bool forceCPU = false;
         public Point? lastMousePos;
         public bool mouseDebounce = true;
+        public bool mouseEnabled = true;
 
         public FrameManager frame;
         public bool readyForUpdate = false;
@@ -176,6 +177,12 @@ namespace GPURayTracer
                 Window_SizeChanged(sender, null);
             }
 
+            if (e.Key == Key.E)
+            {
+                mouseEnabled = !mouseEnabled;
+                Frame.Cursor = mouseEnabled ? Cursors.None : Cursors.Arrow;
+
+            }
 
             if (e.Key == Key.T)
             {
@@ -246,37 +253,40 @@ namespace GPURayTracer
         private static extern bool SetCursorPos(int X, int Y);
         private void Window_MouseMove(object sender, MouseEventArgs e)
         {
-            if(lastMousePos == null)
+            if(mouseEnabled)
             {
-                lastMousePos = e.GetPosition(grid);
-            }
-            else
-            {
-                Point mouseMovement = e.GetPosition(grid);
-                mouseMovement = new Point(mouseMovement.X - lastMousePos.Value.X, mouseMovement.Y - lastMousePos.Value.Y);
-                lastMousePos = e.GetPosition(grid);
-
-                if(!mouseDebounce && lastMousePos.Value.X != -mouseMovement.X && lastMousePos.Value.Y != -mouseMovement.Y)
+                if (lastMousePos == null)
                 {
-                    Vec3 strafe = new Vec3(-mouseMovement.Y, mouseMovement.X, 0) * 0.008f;
-
-                    if (Math.Abs(strafe.x) > 0 || Math.Abs(strafe.y) > 0)
-                    {
-                        rtRenderer.CameraUpdate(new Vec3(), strafe);
-
-                        Point relativePoint = TransformToAncestor(this)
-                           .Transform(new Point(0, 0));
-                        Point pt = new Point(relativePoint.X + grid.ActualWidth / 2,
-                                             relativePoint.Y + grid.ActualHeight / 2);
-                        Point windowCenterPoint = pt;
-                        Point centerPointRelativeToSCreen = grid.PointToScreen(windowCenterPoint);
-                        SetCursorPos((int)centerPointRelativeToSCreen.X, (int)centerPointRelativeToSCreen.Y);
-                        mouseDebounce = true;
-                    }
+                    lastMousePos = e.GetPosition(grid);
                 }
                 else
                 {
-                    mouseDebounce = false;
+                    Point mouseMovement = e.GetPosition(grid);
+                    mouseMovement = new Point(mouseMovement.X - lastMousePos.Value.X, mouseMovement.Y - lastMousePos.Value.Y);
+                    lastMousePos = e.GetPosition(grid);
+
+                    if (!mouseDebounce && lastMousePos.Value.X != -mouseMovement.X && lastMousePos.Value.Y != -mouseMovement.Y)
+                    {
+                        Vec3 strafe = new Vec3(-mouseMovement.Y, mouseMovement.X, 0) * 0.008f;
+
+                        if (Math.Abs(strafe.x) > 0 || Math.Abs(strafe.y) > 0)
+                        {
+                            rtRenderer.CameraUpdate(new Vec3(), strafe);
+
+                            Point relativePoint = TransformToAncestor(this)
+                               .Transform(new Point(0, 0));
+                            Point pt = new Point(relativePoint.X + grid.ActualWidth / 2,
+                                                 relativePoint.Y + grid.ActualHeight / 2);
+                            Point windowCenterPoint = pt;
+                            Point centerPointRelativeToSCreen = grid.PointToScreen(windowCenterPoint);
+                            SetCursorPos((int)centerPointRelativeToSCreen.X, (int)centerPointRelativeToSCreen.Y);
+                            mouseDebounce = true;
+                        }
+                    }
+                    else
+                    {
+                        mouseDebounce = false;
+                    }
                 }
             }
         }
