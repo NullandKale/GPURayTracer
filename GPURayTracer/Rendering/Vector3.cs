@@ -1,20 +1,21 @@
 ﻿using ILGPU.Algorithms;
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Security.Cryptography;
 using System.Text;
 
 namespace GPURayTracer.Rendering
 {
-    public readonly struct Vec3
+    public struct Vec3
     {
         public static readonly Vec3 xAxis = new Vec3(1, 0, 0);
         public static readonly Vec3 yAxis = new Vec3(0, 1, 0);
         public static readonly Vec3 zAxis = new Vec3(0, 0, 1);
 
-        public readonly float x;
-        public readonly float y;
-        public readonly float z;
+        public float x;
+        public float y;
+        public float z;
 
         public Vec3(float x, float y, float z)
         {
@@ -120,16 +121,16 @@ namespace GPURayTracer.Rendering
         }
 
 
-        //public static Vec3 operator /(Vec3 v1, float v)
-        //{
-        //    float desc = 1.0f / v;
-        //    return v1 * desc;
-        //}
-
         public static Vec3 operator /(Vec3 v1, float v)
         {
-            return new Vec3(v1.x / v, v1.y / v, v1.z / v);
+            float desc = 1.0f / v;
+            return v1 * desc;
         }
+
+        //public static Vec3 operator /(Vec3 v1, float v)
+        //{
+        //    return new Vec3(v1.x / v, v1.y / v, v1.z / v);
+        //}
 
 
         public static float dot(Vec3 v1, Vec3 v2)
@@ -184,6 +185,26 @@ namespace GPURayTracer.Rendering
             float rPerpendicular = (iorFrom * cosThetaI - iorTo * cosThetaT) / (iorFrom * cosThetaI + iorTo * cosThetaT);
             float rParallel = (iorFrom * cosThetaI - iorTo * cosThetaT) / (iorFrom * cosThetaI + iorTo * cosThetaT);
             return (rPerpendicular * rPerpendicular + rParallel * rParallel) / 2;
+        }
+
+        public static implicit operator Vector3(Vec3 d)
+        {
+            return new Vector3((float)d.x, (float)d.y, (float)d.z);
+        }
+
+        public static implicit operator Vec3(Vector3 d)
+        {
+            return new Vec3(d.X, d.Y, d.Z);
+        }
+
+        public static implicit operator Vector4(Vec3 d)
+        {
+            return new Vector4((float)d.x, (float)d.y, (float)d.z, 0);
+        }
+
+        public static implicit operator Vec3(Vector4 d)
+        {
+            return new Vec3(d.X, d.Y, d.Z);
         }
     }
 }

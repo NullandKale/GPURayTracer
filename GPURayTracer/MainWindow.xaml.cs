@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -36,7 +37,7 @@ namespace GPURayTracer
         public double scale = -1;
         public int MSAA = 0;
         public int maxBounces = 10;
-        public int targetFPS = 10000;
+        public int targetFPS = 60000;
         public bool forceCPU = false;
 
         public FrameManager frame;
@@ -49,6 +50,7 @@ namespace GPURayTracer
             InitializeComponent();
             Closed += MainWindow_Closed;
             SizeChanged += Window_SizeChanged;
+            Frame.Cursor = Cursors.None;
         }
 
         private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -137,30 +139,6 @@ namespace GPURayTracer
 
         }
 
-        private void Frame_MouseDown(object sender, MouseButtonEventArgs e)
-        {
-            if(rtRenderer != null)
-            {
-                rtRenderer.pause = true;
-
-                Thread.Sleep(1);
-
-                Point p = e.GetPosition(Frame);
-                
-                double frameWidth = Frame.ActualWidth;
-                double frameHeight = Frame.ActualHeight;
-
-                int x = (int)((p.X / frameWidth) * width);
-                int y = (int)((p.Y / frameHeight) * height);
-
-                rtRenderer.pause = false;
-            }
-        }
-
-        private void Window_MouseMove(object sender, MouseEventArgs e)
-        {
-        }
-
         private void Window_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.O)
@@ -186,12 +164,18 @@ namespace GPURayTracer
                 Window_SizeChanged(sender, null);
             }
 
-            if (e.Key == Key.D)
+
+            if (e.Key == Key.T)
+            {
+                debugTAA = !debugTAA;
+            }
+
+            if (e.Key == Key.Y)
             {
                 debugZbuffer = !debugZbuffer;
             }
 
-            if (e.Key == Key.T)
+            if (e.Key == Key.U)
             {
                 debugTAA = !debugTAA;
             }
@@ -246,5 +230,20 @@ namespace GPURayTracer
             Window_SizeChanged(sender, null);
         }
 
+        [DllImport("user32.dll")]
+        static extern void ClipCursor(ref System.Drawing.Rectangle rect);
+
+        [DllImport("user32.dll")]
+        static extern void ClipCursor(IntPtr rect);
+
+        private void button1_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+        private void button2_Click(object sender, RoutedEventArgs e)
+        {
+            ClipCursor(IntPtr.Zero);
+        }
     }
 }

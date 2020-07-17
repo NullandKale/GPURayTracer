@@ -15,23 +15,28 @@ namespace GPURayTracer.Rendering
             int x = ((index) % camera.width);
             int y = ((index) / camera.width);
 
-            int rngIndex = (int)(index * getNext(rngData, index) * 2.0f) + rngOffset;
+            int rngIndex = rngOffset + (int)(index * getNext(rngData, index) * 2.0f);
 
             Ray ray = camera.GetRay(x + getNext(rngData, rngIndex), y + getNext(rngData, rngIndex + 1));
-            Vec3 col = ColorRay(index, rngIndex, ray, materials, spheres, Zbuffer, sphereIDBuffer, rngData, camera);
+            Vec3 col = ColorRay(index, rngIndex + 2, ray, materials, spheres, Zbuffer, sphereIDBuffer, rngData, camera);
 
-            for(int i = 0; i < camera.MSAA; i++)
+            for (int i = 0; i < camera.MSAA; i++)
             {
-                for(int j = 0; j < camera.MSAA; j++)
+                for (int j = 0; j < camera.MSAA; j++)
                 {
                     rngIndex += 3;
+
+                    //evenly distributed multi Samples
                     //ray = camera.GetRay(x + ((float)i / (float)camera.MSAA), y + ((float)j / (float)camera.MSAA));
+
+                    //randomly distributed multi Samples
                     ray = camera.GetRay(x + getNext(rngData, rngIndex), y + getNext(rngData, rngIndex + 1));
+
                     col += ColorRay(index, rngIndex + 2, ray, materials, spheres, Zbuffer, sphereIDBuffer, rngData, camera);
                 }
             }
 
-            if(camera.MSAA > 0)
+            if (camera.MSAA > 0)
             {
                 col /= ((camera.MSAA * camera.MSAA) + 1);
             }
@@ -51,6 +56,11 @@ namespace GPURayTracer.Rendering
                 HitRecord rec = GetSphereHit(working, spheres);
                 if(rec.materialID == -1)
                 {
+                    if (i == 0)
+                    {
+                        sphereIDBuffer[index] = -1;
+                    }
+
                     Vec3 unit_direction = Vec3.unitVector(working.b);
                     float t = 0.5f * (unit_direction.y + 1.0f);
                     Vec3 c = (1.0f - t) * new Vec3(1.0, 1.0, 1.0) + t * new Vec3(0.5, 0.7, 1.0);
@@ -72,11 +82,13 @@ namespace GPURayTracer.Rendering
                     }
                     else
                     {
+                        sphereIDBuffer[index] = -2;
                         return new Vec3();
                     }
                 }
             }
 
+            sphereIDBuffer[index] = -2;
             return new Vec3();
         }
 

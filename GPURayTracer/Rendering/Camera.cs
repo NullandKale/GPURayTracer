@@ -2,6 +2,8 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Numerics;
+using GPURayTracer.Utils;
 
 namespace GPURayTracer.Rendering
 {
@@ -11,33 +13,89 @@ namespace GPURayTracer.Rendering
         public readonly int width;
         public readonly int maxBounces;
         public readonly int MSAA;
+        public readonly float verticalFov;
 
         public readonly Vec3 origin;
+        public readonly Vec3 lookAt;
+        public readonly Vec3 up;
         public readonly OrthoNormalBasis axis;
 
         public readonly float aspectRatio;
         public readonly float cameraPlaneDist;
         public readonly float reciprocalHeight;
         public readonly float reciprocalWidth;
-        public readonly float apertureRadius;
-        public readonly float focalDistance;
 
-        public Camera(Vec3 origin, Vec3 lookAt, Vec3 up, int width, int height, int maxBounces, int MSAA, float verticalFov, Vec3 focalPoint, float apertureRadius)
+        public Camera(Camera camera, Vec3 movement, Vec3 turn)
+        {
+            this.width = camera.width;
+            this.height = camera.height;
+            this.maxBounces = camera.maxBounces;
+            this.MSAA = camera.MSAA;
+
+            Vector4 temp = camera.lookAt - camera.origin;
+
+            if (turn.y != 0)
+            {
+                temp += Vector4.Transform(temp, Matrix4x4.CreateFromAxisAngle(Vec3.cross(Vec3.cross(camera.up, (camera.lookAt - camera.origin)), (camera.lookAt - camera.origin)), (float)turn.y));
+            }
+            if (turn.x != 0)
+            {
+                temp += Vector4.Transform(temp, Matrix4x4.CreateFromAxisAngle(Vec3.cross(camera.up, (camera.lookAt - camera.origin)), (float)turn.x));
+            }
+
+            lookAt = camera.origin + Vec3.unitVector(temp);
+
+            this.origin = camera.origin + movement;
+            this.lookAt += movement;
+            this.up = camera.up;
+
+            axis = OrthoNormalBasis.fromZY(Vec3.unitVector(lookAt - origin), up);
+
+            aspectRatio = ((float)width / (float)height);
+            cameraPlaneDist = 1.0f / XMath.Tan(camera.verticalFov * XMath.PI / 360.0f);
+            this.verticalFov = camera.verticalFov;
+            reciprocalHeight = 1.0f / height;
+            reciprocalWidth = 1.0f / width;
+        }
+
+        public Camera(Camera camera, int width, int height, int MSAA, float verticalFov)
         {
             this.width = width;
             this.height = height;
-            this.maxBounces = maxBounces;
+            this.maxBounces = camera.maxBounces;
             this.MSAA = MSAA;
+            this.verticalFov = verticalFov;
 
-            this.origin = origin;
+            this.origin = camera.origin;
+            this.lookAt = camera.lookAt;
+            this.up = camera.up;
+
             axis = OrthoNormalBasis.fromZY(Vec3.unitVector(lookAt - origin), up);
 
             aspectRatio = ((float)width / (float)height);
             cameraPlaneDist = 1.0f / XMath.Tan(verticalFov * XMath.PI / 360.0f);
             reciprocalHeight = 1.0f / height;
             reciprocalWidth = 1.0f / width;
-            focalDistance = (focalPoint - origin).length();
-            this.apertureRadius = apertureRadius;
+        }
+
+        public Camera(Vec3 origin, Vec3 lookAt, Vec3 up, int width, int height, int maxBounces, int MSAA, float verticalFov)
+        {
+            this.width = width;
+            this.height = height;
+            this.maxBounces = maxBounces;
+            this.MSAA = MSAA;
+            this.verticalFov = verticalFov;
+
+            this.origin = origin;
+            this.lookAt = lookAt;
+            this.up = up;
+
+            axis = OrthoNormalBasis.fromZY(Vec3.unitVector(lookAt - origin), up);
+
+            aspectRatio = ((float)width / (float)height);
+            cameraPlaneDist = 1.0f / XMath.Tan(verticalFov * XMath.PI / 360.0f);
+            reciprocalHeight = 1.0f / height;
+            reciprocalWidth = 1.0f / width;
         }
 
         private Ray rayFromUnit(float x, float y)
@@ -53,6 +111,51 @@ namespace GPURayTracer.Rendering
         public Ray GetRay(float x, float y)
         {
             return rayFromUnit(2 * (x * reciprocalWidth) - 1, 2 * (y * reciprocalHeight) - 1);
+        }
+
+        public static Camera UpdateMovement(Camera camera, InputManager input)
+        {
+            Vec3 movement = new Vec3();
+            float speed = 0.10f;
+            bool moved = false;
+
+            if (input.IsKeyHeld(OpenTK.Input.Key.W))
+            {
+                movement += ((camera.lookAt - camera.origin) * speed);
+                movement.y = 0;
+                moved = true;
+            }
+
+            if (input.IsKeyHeld(OpenTK.Input.Key.S))
+            {
+                movement -= (camera.lookAt - camera.origin) * speed;
+                movement.y = 0;
+                moved = true;
+            }
+
+            if (input.IsKeyHeld(OpenTK.Input.Key.D))
+            {
+                movement -= Vec3.cross(camera.up, (camera.lookAt - camera.origin)) * speed;
+                movement.y = 0;
+                moved = true;
+            }
+
+            if (input.IsKeyHeld(OpenTK.Input.Key.A))
+            {
+                movement += Vec3.cross(camera.up, (camera.lookAt - camera.origin)) * speed;
+                movement.y = 0;
+                moved = true;
+            }
+
+            if (moved)
+            {
+                return new Camera(camera, movement, new Vec3());
+            }
+            else
+            {
+                return camera;
+            }
+
         }
     }
 

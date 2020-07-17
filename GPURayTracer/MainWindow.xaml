@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GPURayTracer"
         mc:Ignorable="d"
-        Title="NULLrender" WindowStyle="SingleBorderWindow" WindowState="Normal" Height="720" Width="1280" Background="Black" KeyDown="Window_KeyDown" MouseMove="Window_MouseMove" MouseLeftButtonDown="Frame_MouseDown">
+        Title="NULLrender" WindowStyle="SingleBorderWindow" WindowState="Normal" Height="720" Width="1280" Background="Black" KeyDown="Window_KeyDown">
     <Grid Name="grid">
         <Image Name="Frame" Stretch="Uniform" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
         <StackPanel Margin="30">

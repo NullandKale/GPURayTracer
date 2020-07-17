@@ -11,6 +11,7 @@
   <ItemGroup>
     <PackageReference Include="ILGPU" Version="0.8.0" />
     <PackageReference Include="ILGPU.Algorithms" Version="0.8.0" />
+    <PackageReference Include="OpenTK" Version="3.2.0" />
     <PackageReference Include="System.Drawing.Common" Version="4.7.0" />
   </ItemGroup>
 
