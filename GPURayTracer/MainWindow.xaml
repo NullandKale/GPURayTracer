@@ -5,10 +5,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GPURayTracer"
         mc:Ignorable="d"
-        Title="NULLrender" WindowStyle="SingleBorderWindow" WindowState="Normal" Height="720" Width="1280" Background="Black" KeyDown="Window_KeyDown">
-    <Grid Name="grid">
+        Title="NULLrender" WindowStyle="SingleBorderWindow" WindowState="Maximized" Height="720" Width="1280" Background="Black" KeyDown="Window_KeyDown">
+    <Grid Name="grid" MouseMove="Window_MouseMove">
         <Image Name="Frame" Stretch="Uniform" RenderOptions.BitmapScalingMode="NearestNeighbor"/>
-        <StackPanel Margin="30">
+        <StackPanel Margin="30" HorizontalAlignment="Left" VerticalAlignment="Top">
             <Label Name="FPS" Content="FPS: " FontSize="12" Foreground="Black" />
             <Label Name="debug" Content="RES: " FontSize="12" Foreground="Black" />
             <Label Name="renderScale"  Content="Render Scale: " FontSize="12" Foreground="Black" />

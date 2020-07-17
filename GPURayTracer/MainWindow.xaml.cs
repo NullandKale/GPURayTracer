@@ -37,8 +37,10 @@ namespace GPURayTracer
         public double scale = -1;
         public int MSAA = 0;
         public int maxBounces = 10;
-        public int targetFPS = 60000;
+        public int targetFPS = 60;
         public bool forceCPU = false;
+        public Point? lastMousePos;
+        public bool mouseDebounce = true;
 
         public FrameManager frame;
         public bool readyForUpdate = false;
@@ -66,7 +68,17 @@ namespace GPURayTracer
                 width = (int)(grid.ActualWidth / -scale);
             }
 
-            Trace.WriteLine("X: " + width + " " + (width * 3) + " " + ((width * 3) % 4));
+            Point relativePoint = TransformToAncestor(this)
+                           .Transform(new Point(0, 0));
+            Point pt = new Point(relativePoint.X + grid.ActualWidth / 2,
+                                 relativePoint.Y + grid.ActualHeight / 2);
+            Point windowCenterPoint = pt;
+            Point centerPointRelativeToSCreen = this.PointToScreen(windowCenterPoint);
+            SetCursorPos((int)centerPointRelativeToSCreen.X, (int)centerPointRelativeToSCreen.Y);
+            lastMousePos = null;
+            mouseDebounce = true;
+
+           Trace.WriteLine("X: " + width + " " + (width * 3) + " " + ((width * 3) % 4));
             width += ((width * 3) % 4);
             Trace.WriteLine("fixed X: " + width + " " + (width * 3) + " " + ((width * 3) % 4));
             restartRenderer();
@@ -230,20 +242,43 @@ namespace GPURayTracer
             Window_SizeChanged(sender, null);
         }
 
-        [DllImport("user32.dll")]
-        static extern void ClipCursor(ref System.Drawing.Rectangle rect);
-
-        [DllImport("user32.dll")]
-        static extern void ClipCursor(IntPtr rect);
-
-        private void button1_Click(object sender, RoutedEventArgs e)
+        [DllImport("User32.dll")]
+        private static extern bool SetCursorPos(int X, int Y);
+        private void Window_MouseMove(object sender, MouseEventArgs e)
         {
+            if(lastMousePos == null)
+            {
+                lastMousePos = e.GetPosition(grid);
+            }
+            else
+            {
+                Point mouseMovement = e.GetPosition(grid);
+                mouseMovement = new Point(mouseMovement.X - lastMousePos.Value.X, mouseMovement.Y - lastMousePos.Value.Y);
+                lastMousePos = e.GetPosition(grid);
 
-        }
+                if(!mouseDebounce && lastMousePos.Value.X != -mouseMovement.X && lastMousePos.Value.Y != -mouseMovement.Y)
+                {
+                    Vec3 strafe = new Vec3(-mouseMovement.Y, mouseMovement.X, 0) * 0.008f;
 
-        private void button2_Click(object sender, RoutedEventArgs e)
-        {
-            ClipCursor(IntPtr.Zero);
+                    if (Math.Abs(strafe.x) > 0 || Math.Abs(strafe.y) > 0)
+                    {
+                        rtRenderer.CameraUpdate(new Vec3(), strafe);
+
+                        Point relativePoint = TransformToAncestor(this)
+                           .Transform(new Point(0, 0));
+                        Point pt = new Point(relativePoint.X + grid.ActualWidth / 2,
+                                             relativePoint.Y + grid.ActualHeight / 2);
+                        Point windowCenterPoint = pt;
+                        Point centerPointRelativeToSCreen = grid.PointToScreen(windowCenterPoint);
+                        SetCursorPos((int)centerPointRelativeToSCreen.X, (int)centerPointRelativeToSCreen.Y);
+                        mouseDebounce = true;
+                    }
+                }
+                else
+                {
+                    mouseDebounce = false;
+                }
+            }
         }
     }
 }

@@ -111,7 +111,7 @@ namespace GPURayTracer.Rendering
                 dstSphereID[index] = newID;
                 dstZBuffer[index] = newDepth;
             }
-            else if(newID != -2)
+            else
             {
                 if(tick < 1 / exponent)
                 {

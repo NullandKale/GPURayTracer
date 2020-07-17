@@ -176,7 +176,7 @@ namespace GPURayTracer.Rendering
                 filterKernel(frameData.ColorFrameBuffer0.Extent / 3, 
                     frameData.ColorFrameBuffer0, frameData.ZBuffer0, frameData.SphereIDBuffer0,
                     frameData.ColorFrameBuffer1, frameData.ZBuffer1, frameData.SphereIDBuffer1, 
-                    10, 0.05f, tick);
+                    10, 0.175f, tick);
                 outputKernel(frameData.ColorFrameBuffer1.Extent / 3, frameData.ColorFrameBuffer1, frameData.bitmapData, frameData.camera);
             }
             else
