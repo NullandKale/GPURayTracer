@@ -1,6 +1,6 @@
 ﻿# NULLrender
 
-![rendered spheres](https://cdn.discordapp.com/attachments/727649424339370046/733465870365360158/TAAV2.png)
+![rendered spheres](https://i.imgur.com/EjMDWJ3.png)
 
 Nullrender is a GPU accelerated ray tracing renderer written in c#. As with most modern ray tracing performance is maintained by Temporal, Zbuffer, and Metadata driven denoising, currently at full resolution the scene above renders at 200+ fps on a rtx 2060. As of the time of writing the renderer only supports spheres with albedo and reflections, but emissive materials with shadow are in progress, as well as triangle ray tracing, and textures.
 
