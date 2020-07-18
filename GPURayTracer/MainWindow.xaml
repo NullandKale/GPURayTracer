@@ -30,6 +30,8 @@
             <Button Content="TAA Toggle" Click="TaaToggleClick" />
             <Label Name="taaLabel" Content="TAA: " FontSize="12" Foreground="Black" />
             <Slider Name="taaSlider" Minimum="0" Maximum="1" LargeChange="0.1" ValueChanged="taaSlider_ValueChanged"/>
+            <Label Name="taaDistLabel" Content="TAA: " FontSize="12" Foreground="Black" />
+            <Slider Name="taaDistSlider" Minimum="0" Maximum="10" LargeChange="0.5" ValueChanged="taaDistSlider_ValueChanged"/>
         </StackPanel>
     </Grid>
 </Window>

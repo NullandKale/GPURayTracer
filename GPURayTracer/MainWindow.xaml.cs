@@ -32,13 +32,14 @@ namespace GPURayTracer
         public static bool debugTAA = true;
         public static bool debugRandomGeneration = true;
         public static float debugTAAScale = 0.95f;
+        public static float debugTAADistScale = 0.5f;
 
         public int width;
         public int height;
 
         public double scale = -1;
         public int extraRenderPasses = 0;
-        public int maxBounces = 10;
+        public int maxBounces = 1000;
         public int targetFPS = 70;
         public bool forceCPU = false;
         public Point? lastMousePos;
@@ -57,6 +58,7 @@ namespace GPURayTracer
             SizeChanged += Window_SizeChanged;
             Frame.Cursor = Cursors.None;
             taaLabel.Content = debugTAA && !debugZbuffer ? string.Format("TAA ON # {0:0.##}", debugTAAScale) : "TAA OFF";
+            taaDistLabel.Content = debugTAA && !debugZbuffer ? string.Format("TAA dist {0:0.##}", debugTAADistScale) : "TAA OFF";
             taaSlider.Value = debugTAAScale;
 
             instructions.Content =
@@ -156,9 +158,9 @@ namespace GPURayTracer
                     displayTimer.endUpdate();
                     displayTimer.startUpdate();
                     FPS.Content = rtRenderer.device.AcceleratorType.ToString() + " "
-                        + (rtRenderer.rFPStimer.averageUpdateRate <= displayTimer.averageUpdateRate 
-                        ? ((int)(rtRenderer.rFPStimer.averageUpdateRate) + " FPS") 
-                        : ((int)displayTimer.averageUpdateRate + " FPS WPF LIMITED")) + getWindowState();
+                        + (rtRenderer.rFPStimer.averageUpdateRate <= displayTimer.averageUpdateRate
+                        ? ((int)(rtRenderer.rFPStimer.averageUpdateRate) + " FPS")
+                        : ((int)displayTimer.averageUpdateRate + " FPS WPF LIMITED"));
                     camera.Content = string.Format("Pos: {0:0.##}, {1:0.##} {2:0.##}", rtRenderer.frameData.camera.origin.x, rtRenderer.frameData.camera.origin.y, rtRenderer.frameData.camera.origin.z);
                     debug.Content = "[ " + width + ", " + height + " ]" + " SF: " + scale;
                     renderScale.Content = "Scale Factor: " + scale;
@@ -168,30 +170,6 @@ namespace GPURayTracer
                 readyForUpdate = false;
             }
 
-        }
-
-        private string getWindowState()
-        {
-            string toReturn = " ";
-            if(debugRandomGeneration)
-            {
-                toReturn += "HFP Noise ";
-            }
-            else
-            {
-                toReturn += "White Noise ";
-            }
-
-            if (debugZbuffer)
-            {
-                toReturn += "Z Buffer ";
-            }
-            else if (debugTAA)
-            {
-                toReturn += "TAA ";
-            }
-
-            return toReturn;
         }
 
         private void Window_KeyDown(object sender, KeyEventArgs e)
@@ -339,6 +317,12 @@ namespace GPURayTracer
         {
             debugTAAScale = (float)e.NewValue;
             taaLabel.Content = debugTAA && !debugZbuffer ? string.Format("TAA ON # {0:0.##}", debugTAAScale) : "TAA OFF";
+        }
+
+        private void taaDistSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            debugTAADistScale = (float)e.NewValue;
+            taaDistLabel.Content = debugTAA && !debugZbuffer ? string.Format("TAA Dist {0:0.##}", debugTAADistScale) : "TAA OFF";
         }
     }
 }
