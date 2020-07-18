@@ -55,6 +55,12 @@ namespace GPURayTracer.Rendering
             for(int i = 0; i < camera.maxBounces; i++)
             {
                 HitRecord rec = GetSphereHit(working, spheres);
+                HitRecord TriRec = GetTriangleHit(working, triangles, triNorms, rec.t);
+
+                if (rec.materialID == -1 || TriRec.materialID != -1)
+                {
+                    rec = TriRec;
+                }
 
                 if (rec.materialID == -1)
                 {
@@ -148,9 +154,9 @@ namespace GPURayTracer.Rendering
             }
         }
 
-        private static HitRecord GetTriangleHit(Ray r, ArrayView<Triangle> triangles, ArrayView<Triangle> normals)
+        private static HitRecord GetTriangleHit(Ray r, ArrayView<Triangle> triangles, ArrayView<Triangle> normals, float nearerThan)
         {
-            float currentNearestDist = float.MaxValue;
+            float currentNearestDist = nearerThan;
             int NcurrentIndex = -1;
             float Ndet = 0;
             float Nu = 0;
@@ -170,7 +176,7 @@ namespace GPURayTracer.Rendering
                     Vec3 tVec = r.a - t.Vert0;
                     float u = Vec3.dot(tVec, pVec) * invDet;
                     Vec3 qVec = Vec3.cross(tVec, tuVec);
-                    float v = Vec3.dot(r.b, qVec);
+                    float v = Vec3.dot(r.b, qVec) * invDet;
 
                     if (u < 0.0 || u > 1.0 || v < 0 || u + v > 1)
                     {
