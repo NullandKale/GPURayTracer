@@ -55,35 +55,12 @@ namespace GPURayTracer.Rendering
             for(int i = 0; i < camera.maxBounces; i++)
             {
                 HitRecord rec = GetSphereHit(working, spheres);
-                HitRecord triRec = GetTriangleHit(working, triangles, triNorms);
-                bool triangle = true;
-
-                if (rec.materialID < 0)
-                {
-                    rec = triRec;
-                }
-                else if (triRec.materialID > 0 && triRec.t <= rec.t)
-                {
-                    rec = triRec;
-                }
-                else
-                {
-                    triangle = false;
-                }
 
                 if (rec.materialID == -1)
                 {
                     if (i == 0)
                     {
-                        //for now triangles are bad pixels
-                        if (triangle)
-                        {
-                            sphereIDBuffer[index] = -1;
-                        }
-                        else
-                        {
-                            sphereIDBuffer[index] = -1;
-                        }
+                        sphereIDBuffer[index] = -1;
                     }
 
                     Vec3 unit_direction = Vec3.unitVector(working.b);

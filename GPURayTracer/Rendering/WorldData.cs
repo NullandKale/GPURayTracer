@@ -45,10 +45,10 @@ namespace GPURayTracer.Rendering
             addTriangle(new Triangle(tl, tr, bl, boxMat));
             addTriangle(new Triangle(tr, bl, br, boxMat));
 
-            //addSphere(new Sphere(new Vec3(0, 0, -0.5f), 0.25f, addMaterial(MaterialData.makeDiffuse(new Vec3(0.9, 0.5, 0.5)))));
-            //addSphere(new Sphere(new Vec3(0, 100.5, -1), 100, addMaterial(MaterialData.makeDiffuse(new Vec3(0.8, 0.8, 0.8)))));
-            //addSphere(new Sphere(new Vec3(1, 0, -1),  0.5f, addMaterial(MaterialData.makeMirror(new Vec3(0.8, 0.6, 0.2), 0))));
-            addSphere(new Sphere(new Vec3(-3, 0,-3), 0.5f, addMaterial(MaterialData.makeMirror(new Vec3(0.9, 0.9, 0.9), 0))));
+            addSphere(new Sphere(new Vec3(0, 0, -0.5f), 0.25f, addMaterial(MaterialData.makeDiffuse(new Vec3(0.9, 0.5, 0.5)))));
+            addSphere(new Sphere(new Vec3(0, 100.5, -1), 100, addMaterial(MaterialData.makeDiffuse(new Vec3(0.8, 0.8, 0.8)))));
+            addSphere(new Sphere(new Vec3(1, 0, -1),  0.5f, addMaterial(MaterialData.makeMirror(new Vec3(0.8, 0.6, 0.2), 0))));
+            addSphere(new Sphere(new Vec3(-1, 0,-1), 0.5f, addMaterial(MaterialData.makeMirror(new Vec3(0.9, 0.9, 0.9), 0))));
         }
 
         public int addMaterial(MaterialData toAdd)
