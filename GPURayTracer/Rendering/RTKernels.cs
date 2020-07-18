@@ -121,14 +121,14 @@ namespace GPURayTracer.Rendering
                 {
                     float sqrtdisc = XMath.Sqrt(discr);
                     float temp = (-b - sqrtdisc) / a;
-                    if (temp < closestT && temp > float.Epsilon)
+                    if (temp < closestT && temp > 0.001f)
                     {
                         closestT = temp;
                         sphereIndex = i;
                         continue;
                     }
                     temp = (-b + sqrtdisc) / a;
-                    if (temp < closestT && temp > float.Epsilon)
+                    if (temp < closestT && temp > 0.001f)
                     {
                         closestT = temp;
                         sphereIndex = i;
@@ -179,7 +179,7 @@ namespace GPURayTracer.Rendering
                     else
                     {
                         float temp = Vec3.dot(tvVec, qVec) * invDet;
-                        if (temp > float.Epsilon && temp < currentNearestDist)
+                        if (temp > 0.00001f && temp < currentNearestDist)
                         {
                             currentNearestDist = temp;
                             NcurrentIndex = i;
@@ -201,7 +201,7 @@ namespace GPURayTracer.Rendering
                 Vec3 uNorm = tn.uVector();
                 Vec3 vNorm = tn.vVector();
                 Vec3 normal = Vec3.unitVector((Nu * uNorm) + (Nv * vNorm) + tn.Vert0);
-                bool backfacing = Ndet < float.Epsilon;
+                bool backfacing = Ndet < 0.00001f;
                 return new HitRecord(currentNearestDist, r.pointAtParameter(currentNearestDist), backfacing ? -normal : normal, backfacing, tn.MaterialID, NcurrentIndex);
             }
         }
