@@ -23,10 +23,10 @@ namespace GPURayTracer.Rendering
         public MemoryBuffer<float> finalFrameBuffer;
         public MemoryBuffer<byte> bitmapData;
         public MemoryBuffer<float> rngData;
-        public FrameData(Accelerator device, int width, int height, int MSAA, int maxBounces)
+        public FrameData(Accelerator device, int width, int height, int extraRenderPasses, int maxBounces)
         {
             this.device = device;
-            changeSize(width, height, MSAA, maxBounces);
+            changeSize(width, height, extraRenderPasses, maxBounces);
             initRandomness();
         }
 
@@ -48,9 +48,9 @@ namespace GPURayTracer.Rendering
             this.rngData.CopyFrom(rngData, Index1.Zero, Index1.Zero, this.rngData.Extent);
         }
 
-        public void changeSize(int width, int height, int MSAA, int maxBounces)
+        public void changeSize(int width, int height, int extraRenderPasses, int maxBounces)
         {
-            camera = new Camera(new Vec3(0, 0, -4), new Vec3(0,0,0), Vec3.unitVector(new Vec3(0, 1, 0)), width, height, maxBounces, MSAA, 40f);
+            camera = new Camera(new Vec3(0, 0, -4), new Vec3(0,0,0), Vec3.unitVector(new Vec3(0, 1, 0)), width, height, maxBounces, extraRenderPasses, 40f);
             
             finalFrameBuffer = device.Allocate<float>(width * height * 3);
 

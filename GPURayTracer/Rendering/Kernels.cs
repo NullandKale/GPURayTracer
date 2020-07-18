@@ -99,6 +99,7 @@ namespace GPURayTracer.Rendering
             int gIndex = rIndex + 1;
             int bIndex = gIndex + 1;
 
+            //add toggle for this
             if (newID == -2)
             {
                 return;

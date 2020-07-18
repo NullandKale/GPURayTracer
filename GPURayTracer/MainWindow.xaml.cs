@@ -37,7 +37,7 @@ namespace GPURayTracer
         public int height;
 
         public double scale = -1;
-        public int MSAA = 0;
+        public int extraRenderPasses = 0;
         public int maxBounces = 10;
         public int targetFPS = 60;
         public bool forceCPU = false;
@@ -83,15 +83,18 @@ namespace GPURayTracer
                 width = (int)(grid.ActualWidth / -scale);
             }
 
-            Point relativePoint = TransformToAncestor(this)
-                           .Transform(new Point(0, 0));
-            Point pt = new Point(relativePoint.X + grid.ActualWidth / 2,
-                                 relativePoint.Y + grid.ActualHeight / 2);
-            Point windowCenterPoint = pt;
-            Point centerPointRelativeToSCreen = this.PointToScreen(windowCenterPoint);
-            SetCursorPos((int)centerPointRelativeToSCreen.X, (int)centerPointRelativeToSCreen.Y);
-            lastMousePos = null;
-            mouseDebounce = true;
+            if (mouseEnabled)
+            {
+                Point relativePoint = TransformToAncestor(this).Transform(new Point(0, 0));
+                Point pt = new Point(relativePoint.X + grid.ActualWidth / 2, relativePoint.Y + grid.ActualHeight / 2);
+                Point windowCenterPoint = pt;
+                Point centerPointRelativeToSCreen = this.PointToScreen(windowCenterPoint);
+                SetCursorPos((int)centerPointRelativeToSCreen.X, (int)centerPointRelativeToSCreen.Y);
+                lastMousePos = null;
+                mouseDebounce = true;
+            }
+
+
 
            Trace.WriteLine("X: " + width + " " + (width * 3) + " " + ((width * 3) % 4));
             width += ((width * 3) % 4);
@@ -114,7 +117,7 @@ namespace GPURayTracer
 
             try
             {
-                rtRenderer = new RayTracer(frame, width, height, targetFPS, MSAA, maxBounces, forceCPU);
+                rtRenderer = new RayTracer(frame, width, height, targetFPS, extraRenderPasses, maxBounces, forceCPU);
             }
             catch (Exception e)
             {
@@ -157,9 +160,9 @@ namespace GPURayTracer
                         ? ((int)(rtRenderer.rFPStimer.averageUpdateRate) + " FPS") 
                         : ((int)displayTimer.averageUpdateRate + " FPS WPF LIMITED")) + getWindowState();
                     camera.Content = string.Format("Pos: {0:0.##}, {1:0.##} {2:0.##}", rtRenderer.frameData.camera.origin.x, rtRenderer.frameData.camera.origin.y, rtRenderer.frameData.camera.origin.z);
-                    debug.Content = "[ " + width + ", " + height + " ]" + " SF: " + scale + " Sample Per Pixel: " + MSAA;
+                    debug.Content = "[ " + width + ", " + height + " ]" + " SF: " + scale;
                     renderScale.Content = "Scale Factor: " + scale;
-                    samples.Content = "Sample Per Pixel: " + MSAA;
+                    samples.Content = "Sample Per Pixel: " + extraRenderPasses;
                     frame.update();
                 }
                 readyForUpdate = false;
@@ -273,19 +276,19 @@ namespace GPURayTracer
 
         private void SampleMinus_Click(object sender, RoutedEventArgs e)
         {
-            MSAA--;
+            extraRenderPasses--;
             Window_SizeChanged(sender, null);
         }
 
         private void SamplePlus_Click(object sender, RoutedEventArgs e)
         {
-            MSAA++;
+            extraRenderPasses++;
             Window_SizeChanged(sender, null);
         }
 
         private void SampleDef_Click(object sender, RoutedEventArgs e)
         {
-            MSAA = 2;
+            extraRenderPasses = 0;
             Window_SizeChanged(sender, null);
         }
 
@@ -313,10 +316,8 @@ namespace GPURayTracer
                         {
                             rtRenderer.CameraUpdate(new Vec3(), strafe);
 
-                            Point relativePoint = TransformToAncestor(this)
-                               .Transform(new Point(0, 0));
-                            Point pt = new Point(relativePoint.X + grid.ActualWidth / 2,
-                                                 relativePoint.Y + grid.ActualHeight / 2);
+                            Point relativePoint = TransformToAncestor(this).Transform(new Point(0, 0));
+                            Point pt = new Point(relativePoint.X + grid.ActualWidth / 2, relativePoint.Y + grid.ActualHeight / 2);
                             Point windowCenterPoint = pt;
                             Point centerPointRelativeToSCreen = grid.PointToScreen(windowCenterPoint);
                             SetCursorPos((int)centerPointRelativeToSCreen.X, (int)centerPointRelativeToSCreen.Y);

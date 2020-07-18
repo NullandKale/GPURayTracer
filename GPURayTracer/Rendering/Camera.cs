@@ -12,7 +12,7 @@ namespace GPURayTracer.Rendering
         public readonly int height;
         public readonly int width;
         public readonly int maxBounces;
-        public readonly int MSAA;
+        public readonly int extraRenderPasses;
         public readonly float verticalFov;
 
         public readonly Vec3 origin;
@@ -30,7 +30,7 @@ namespace GPURayTracer.Rendering
             this.width = camera.width;
             this.height = camera.height;
             this.maxBounces = camera.maxBounces;
-            this.MSAA = camera.MSAA;
+            this.extraRenderPasses = camera.extraRenderPasses;
 
             Vector4 temp = camera.lookAt - camera.origin;
 
@@ -58,12 +58,12 @@ namespace GPURayTracer.Rendering
             reciprocalWidth = 1.0f / width;
         }
 
-        public Camera(Camera camera, int width, int height, int MSAA, float verticalFov)
+        public Camera(Camera camera, int width, int height, float verticalFov)
         {
             this.width = width;
             this.height = height;
             this.maxBounces = camera.maxBounces;
-            this.MSAA = MSAA;
+            this.extraRenderPasses = camera.extraRenderPasses;
             this.verticalFov = verticalFov;
 
             this.origin = camera.origin;
@@ -78,14 +78,13 @@ namespace GPURayTracer.Rendering
             reciprocalWidth = 1.0f / width;
         }
 
-        public Camera(Vec3 origin, Vec3 lookAt, Vec3 up, int width, int height, int maxBounces, int MSAA, float verticalFov)
+        public Camera(Vec3 origin, Vec3 lookAt, Vec3 up, int width, int height, int maxBounces, int extraRenderPasses, float verticalFov)
         {
             this.width = width;
             this.height = height;
             this.maxBounces = maxBounces;
-            this.MSAA = MSAA;
             this.verticalFov = verticalFov;
-
+            this.extraRenderPasses = extraRenderPasses;
             this.origin = origin;
             this.lookAt = lookAt;
             this.up = up;
@@ -116,7 +115,7 @@ namespace GPURayTracer.Rendering
         public static Camera UpdateMovement(Camera camera, InputManager input)
         {
             Vec3 movement = new Vec3();
-            float speed = 0.01f;
+            float speed = 0.04f;
             bool moved = false;
 
             if (input.IsKeyHeld(OpenTK.Input.Key.W))

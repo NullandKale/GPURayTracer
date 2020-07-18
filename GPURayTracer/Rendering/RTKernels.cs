@@ -19,34 +19,32 @@ namespace GPURayTracer.Rendering
             int y = ((index) / camera.width);
 
             int rngIndex = rngOffset + index + (int)(index * getNext(rngData, index) * 2.0f);
-
             Ray ray = camera.GetRay(x + getNext(rngData, rngIndex), y + getNext(rngData, rngIndex + 1));
             Vec3 col = ColorRay(index, rngIndex + 2, ray, materials, spheres, triangles, triNorms, Zbuffer, sphereIDBuffer, rngData, camera);
-
-            for (int i = 0; i < camera.MSAA; i++)
-            {
-                for (int j = 0; j < camera.MSAA; j++)
-                {
-                    rngIndex += 3;
-
-                    //evenly distributed multi Samples
-                    //ray = camera.GetRay(x + ((float)i / (float)camera.MSAA), y + ((float)j / (float)camera.MSAA));
-
-                    //randomly distributed multi Samples
-                    ray = camera.GetRay(x + getNext(rngData, rngIndex), y + getNext(rngData, rngIndex + 1));
-
-                    col += ColorRay(index, rngIndex + 2, ray, materials, spheres, triangles, triNorms, Zbuffer, sphereIDBuffer, rngData, camera);
-                }
-            }
-
-            if (camera.MSAA > 0)
-            {
-                col /= ((camera.MSAA * camera.MSAA) + 1);
-            }
 
             diffuseFrameData[(index * 3)] = col.x;
             diffuseFrameData[(index * 3) + 1] = col.y;
             diffuseFrameData[(index * 3) + 2] = col.z;
+        }
+
+        public static void RenderKernelSecondaryPass(Index1 index,
+            ArrayView<float> diffuseFrameData, ArrayView<float> Zbuffer, ArrayView<int> sphereIDBuffer,
+            ArrayView<float> rngData, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, ArrayView<Triangle> triangles, ArrayView<Triangle> triNorms,
+            Camera camera, int rngOffset)
+        {
+            if (sphereIDBuffer[index] == -2)
+            {
+                int x = ((index) % camera.width);
+                int y = ((index) / camera.width);
+
+                int rngIndex = rngOffset + index + (int)(index * getNext(rngData, index + rngOffset) * 2.0f);
+                Ray ray = camera.GetRay(x + getNext(rngData, rngIndex), y + getNext(rngData, rngIndex + 1));
+                Vec3 col = ColorRay(index, rngIndex + 2, ray, materials, spheres, triangles, triNorms, Zbuffer, sphereIDBuffer, rngData, camera);
+
+                diffuseFrameData[(index * 3)] = col.x;
+                diffuseFrameData[(index * 3) + 1] = col.y;
+                diffuseFrameData[(index * 3) + 2] = col.z;
+            }
         }
 
         private static Vec3 ColorRay(int index, int rngStartIndex, Ray ray, ArrayView<MaterialData> materials, ArrayView<Sphere> spheres, ArrayView<Triangle> triangles, ArrayView<Triangle> triNorms, ArrayView<float> Zbuffer, ArrayView<int> sphereIDBuffer, ArrayView<float> rngData, Camera camera)
@@ -57,18 +55,35 @@ namespace GPURayTracer.Rendering
             for(int i = 0; i < camera.maxBounces; i++)
             {
                 HitRecord rec = GetSphereHit(working, spheres);
-                //HitRecord triRec = GetTriangleHit(working, triangles, triNorms);
-                
-                //if(triRec.t < rec.t)
-                //{
-                //    rec = triRec;
-                //}
+                HitRecord triRec = GetTriangleHit(working, triangles, triNorms);
+                bool triangle = true;
 
-                if(rec.materialID == -1)
+                if (rec.materialID < 0)
+                {
+                    rec = triRec;
+                }
+                else if (triRec.materialID > 0 && triRec.t <= rec.t)
+                {
+                    rec = triRec;
+                }
+                else
+                {
+                    triangle = false;
+                }
+
+                if (rec.materialID == -1)
                 {
                     if (i == 0)
                     {
-                        sphereIDBuffer[index] = -1;
+                        //for now triangles are bad pixels
+                        if (triangle)
+                        {
+                            sphereIDBuffer[index] = -1;
+                        }
+                        else
+                        {
+                            sphereIDBuffer[index] = -1;
+                        }
                     }
 
                     Vec3 unit_direction = Vec3.unitVector(working.b);
