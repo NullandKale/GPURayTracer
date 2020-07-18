@@ -121,14 +121,14 @@ namespace GPURayTracer.Rendering
                 {
                     float sqrtdisc = XMath.Sqrt(discr);
                     float temp = (-b - sqrtdisc) / a;
-                    if (temp < closestT && temp > 0.001f)
+                    if (temp < closestT && temp > 0.01f)
                     {
                         closestT = temp;
                         sphereIndex = i;
                         continue;
                     }
                     temp = (-b + sqrtdisc) / a;
-                    if (temp < closestT && temp > 0.001f)
+                    if (temp < closestT && temp > 0.01f)
                     {
                         closestT = temp;
                         sphereIndex = i;

@@ -30,7 +30,7 @@ namespace GPURayTracer
 
         public static bool debugZbuffer = false;
         public static bool debugTAA = true;
-        public static bool debugRandomGeneration = true;
+        public static bool debugRandomGeneration = false;
         public static float debugTAAScale = 0.95f;
         public static float debugTAADistScale = 0.5f;
 
@@ -60,6 +60,7 @@ namespace GPURayTracer
             taaLabel.Content = debugTAA && !debugZbuffer ? string.Format("TAA ON # {0:0.##}", debugTAAScale) : "TAA OFF";
             taaDistLabel.Content = debugTAA && !debugZbuffer ? string.Format("TAA dist {0:0.##}", debugTAADistScale) : "TAA OFF";
             taaSlider.Value = debugTAAScale;
+            taaDistSlider.Value = debugTAADistScale;
 
             instructions.Content =
                 "Keys\n" +
@@ -159,12 +160,15 @@ namespace GPURayTracer
                     displayTimer.startUpdate();
                     FPS.Content = rtRenderer.device.AcceleratorType.ToString() + " "
                         + (rtRenderer.rFPStimer.averageUpdateRate <= displayTimer.averageUpdateRate
-                        ? ((int)(rtRenderer.rFPStimer.averageUpdateRate) + " FPS")
-                        : ((int)displayTimer.averageUpdateRate + " FPS WPF LIMITED"));
+                        ? ((int)(rtRenderer.rFPStimer.averageUpdateRate) + " FPS GPU LIMITED")
+                        : ((int)displayTimer.averageUpdateRate + " FPS WPF LIMITED")) + (debugTAA && !debugZbuffer ? " TAA  ON" : " TAA OFF");
                     camera.Content = string.Format("Pos: {0:0.##}, {1:0.##} {2:0.##}", rtRenderer.frameData.camera.origin.x, rtRenderer.frameData.camera.origin.y, rtRenderer.frameData.camera.origin.z);
                     debug.Content = "[ " + width + ", " + height + " ]" + " SF: " + scale;
                     renderScale.Content = "Scale Factor: " + scale;
                     samples.Content = "Sample Per Pixel: " + extraRenderPasses;
+                    taaLabel.Content = debugTAA && !debugZbuffer ? string.Format("TAA ON # {0:0.##}", debugTAAScale) : "TAA OFF";
+                    taaDistLabel.Content = debugTAA && !debugZbuffer ? string.Format("TAA dist {0:0.##}", debugTAADistScale) : "TAA OFF";
+
                     frame.update();
                 }
                 readyForUpdate = false;
