@@ -39,7 +39,7 @@ namespace GPURayTracer
         public double scale = -1;
         public int extraRenderPasses = 0;
         public int maxBounces = 10;
-        public int targetFPS = 60;
+        public int targetFPS = 70;
         public bool forceCPU = false;
         public Point? lastMousePos;
         public bool mouseDebounce = true;
@@ -277,19 +277,16 @@ namespace GPURayTracer
         private void SampleMinus_Click(object sender, RoutedEventArgs e)
         {
             extraRenderPasses--;
-            Window_SizeChanged(sender, null);
         }
 
         private void SamplePlus_Click(object sender, RoutedEventArgs e)
         {
             extraRenderPasses++;
-            Window_SizeChanged(sender, null);
         }
 
         private void SampleDef_Click(object sender, RoutedEventArgs e)
         {
             extraRenderPasses = 0;
-            Window_SizeChanged(sender, null);
         }
 
         [DllImport("User32.dll")]
