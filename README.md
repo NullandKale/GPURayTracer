@@ -6,6 +6,8 @@ Nullrender is a GPU accelerated ray tracing renderer written in c#. As with most
 
 My ultimate goal is to make a simple open-source component based ray traced game engine for low poly / low res games with modern graphics tech. I am up for collaboration in this, so if you are interested in this at all I would be happy to have the help.
 
+A test build to play with is available [here](https://github.com/NullandKale/GPURayTracer/releases/tag/0.0.1). If no cuda device is found it will render in CPU mode.
+
 ## Ways to contribute:
 
 Let me know you are interested in working on a feature by Email, PM, Github, or the [discord server](https://discord.gg/f3zwf2D). Even downloading the test builds and testing performance on different hardware would be useful.
