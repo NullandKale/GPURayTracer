@@ -200,7 +200,7 @@ namespace GPURayTracer.Rendering
                 renderKernelSecondaryPass(frameData.ColorFrameBuffer0.Extent / 3,
                     frameData.ColorFrameBuffer0, frameData.ZBuffer0, frameData.SphereIDBuffer0,
                     frameData.rngData, worldData.getDeviceMaterials(), worldData.getDeviceSpheres(), worldData.getDeviceTriangles(), worldData.getDeviceTriNormals(), frameData.camera,
-                    tick);
+                    tick + i + 1);
             }
 
             if (MainWindow.debugZbuffer)
