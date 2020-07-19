@@ -38,9 +38,9 @@ namespace GPURayTracer
         public int height;
 
         public double scale = -1;
-        public int extraRenderPasses = 1;
-        public int maxBounces = 1000;
-        public int targetFPS = 70;
+        public int extraRenderPasses = 0;
+        public int maxBounces = 10;
+        public int targetFPS = 700000;
         public bool forceCPU = false;
         public Point? lastMousePos;
         public bool mouseDebounce = true;

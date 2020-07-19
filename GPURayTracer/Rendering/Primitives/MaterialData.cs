@@ -28,9 +28,9 @@ namespace GPURayTracer.Rendering.Primitives
             return new MaterialData(new Vec3(), diffuseColor, 0, 0, 0, 0);
         }
 
-        public static MaterialData makeGlass(Vec3 diffuseColor)
+        public static MaterialData makeGlass(Vec3 diffuseColor, float ref_idx)
         {
-            return new MaterialData(new Vec3(), diffuseColor, 0, 0, 0, 1);
+            return new MaterialData(new Vec3(), diffuseColor, ref_idx, 0, 0, 1);
         }
 
         public static MaterialData makeMirror(Vec3 diffuseColor, float fuzz)

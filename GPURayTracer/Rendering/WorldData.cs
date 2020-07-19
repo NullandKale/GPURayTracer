@@ -21,9 +21,10 @@ namespace GPURayTracer.Rendering
         private bool spheresDirty = true;
         private bool trianglesDirty = true;
         private bool triNormalsDirty = true;
-        
-        private MemoryBuffer<MaterialData> device_materials;
+
+        private MemoryBuffer<int> lightSphereIDs;
         private MemoryBuffer<Sphere> device_spheres;
+        private MemoryBuffer<MaterialData> device_materials;
         private MemoryBuffer<Triangle> device_triangles;
         private MemoryBuffer<Triangle> device_triNormals;
 
@@ -48,24 +49,24 @@ namespace GPURayTracer.Rendering
 
             addSphere(new Sphere(new Vec3(0, 0, -0.5f), 0.25f, addMaterial(MaterialData.makeDiffuse(new Vec3(0.9, 0.5, 0.5)))));
             addSphere(new Sphere(new Vec3(0, 1000.5, -1), 1000, addMaterial(MaterialData.makeDiffuse(new Vec3(0.8, 0.8, 0.8)))));
-            addSphere(new Sphere(new Vec3(1, 0, -1), 0.5f, addMaterial(MaterialData.makeMirror(new Vec3(0.8, 0.6, 0.2), 0))));
-            addSphere(new Sphere(new Vec3(-1, 0, -1), 0.5f, addMaterial(MaterialData.makeMirror(new Vec3(0.9, 0.9, 0.9), 0))));
+            addSphere(new Sphere(new Vec3(1, 0, -1), 0.5f, addMaterial(MaterialData.makeLight(new Vec3(1, 1, 1)))));
+            addSphere(new Sphere(new Vec3(-1, 0, -1), 0.5f, addMaterial(MaterialData.makeGlass(new Vec3(0.9, 0.9, 0.9), 1.5f))));
 
-            Random random = new Random();
+            //Random random = new Random();
 
-            for (int i = 0; i < 100; i++)
-            {
-                float size = (float)((random.NextDouble() * 0.25) + 0.25);
-                Vec3 pos = new Vec3((random.NextDouble() * 40) - 20, size / 2, (random.NextDouble() * 40) - 20);
-                addSphere(new Sphere(pos, size, addMaterial(MaterialData.makeDiffuse(new Vec3(random.NextDouble(), random.NextDouble(), random.NextDouble())))));
-            }
+            //for (int i = 0; i < 100; i++)
+            //{
+            //    float size = (float)((random.NextDouble() * 0.25) + 0.25);
+            //    Vec3 pos = new Vec3((random.NextDouble() * 40) - 20, size / 2, (random.NextDouble() * 40) - 20);
+            //    addSphere(new Sphere(pos, size, addMaterial(MaterialData.makeDiffuse(new Vec3(random.NextDouble(), random.NextDouble(), random.NextDouble())))));
+            //}
 
-            for (int i = 0; i < 10; i++)
-            {
-                float size = (float)((random.NextDouble() * 0.25) + 0.25);
-                Vec3 pos = new Vec3((random.NextDouble() * 40) - 20, size / 2, (random.NextDouble() * 40) - 20);
-                addSphere(new Sphere(pos, size, addMaterial(MaterialData.makeMirror(new Vec3(random.NextDouble(), random.NextDouble(), random.NextDouble()), i % 2 == 0 ? 0.4f : 0))));
-            }
+            //for (int i = 0; i < 10; i++)
+            //{
+            //    float size = (float)((random.NextDouble() * 0.25) + 0.25);
+            //    Vec3 pos = new Vec3((random.NextDouble() * 40) - 20, size / 2, (random.NextDouble() * 40) - 20);
+            //    addSphere(new Sphere(pos, size, addMaterial(MaterialData.makeMirror(new Vec3(random.NextDouble(), random.NextDouble(), random.NextDouble()), i % 2 == 0 ? 0.4f : 0))));
+            //}
         }
 
         public int addMaterial(MaterialData toAdd)
@@ -128,11 +129,41 @@ namespace GPURayTracer.Rendering
                 var temp = spheres.ToArray();
                 device_spheres = device.Allocate<Sphere>(temp.Length);
                 device_spheres.CopyFrom(temp, Index1.Zero, Index1.Zero, device_spheres.Extent);
+
+                var lights = buildSphereLights();
+                lightSphereIDs = device.Allocate<int>(lights.Length);
+                lightSphereIDs.CopyFrom(lights, Index1.Zero, Index1.Zero, lightSphereIDs.Extent);
+
                 spheresDirty = false;
             }
 
             return device_spheres;
         }
+
+        public ArrayView<int> getDeviceLightSphereIDs()
+        {
+            if (spheresDirty && spheres.Count > 0)
+            {
+                if (device_spheres != null)
+                {
+                    device_spheres.Dispose();
+                    device_spheres = null;
+                }
+
+                var temp = spheres.ToArray();
+                device_spheres = device.Allocate<Sphere>(temp.Length);
+                device_spheres.CopyFrom(temp, Index1.Zero, Index1.Zero, device_spheres.Extent);
+
+                var lights = buildSphereLights();
+                lightSphereIDs = device.Allocate<int>(lights.Length);
+                lightSphereIDs.CopyFrom(lights, Index1.Zero, Index1.Zero, lightSphereIDs.Extent);
+
+                spheresDirty = false;
+            }
+
+            return lightSphereIDs;
+        }
+
 
         public int addTriangle(Triangle toAdd)
         {
@@ -191,6 +222,21 @@ namespace GPURayTracer.Rendering
             }
 
             return device_triNormals;
+        }
+
+        private int[] buildSphereLights()
+        {
+            List<int> lights = new List<int>();
+
+            for(int i = 0; i < spheres.Count; i++)
+            {
+                if(materials[spheres[i].materialIndex].type == 3)
+                {
+                    lights.Add(i);
+                }
+            }
+
+            return lights.ToArray();
         }
     }
 }

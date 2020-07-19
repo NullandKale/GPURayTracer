@@ -9,6 +9,20 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Assets\defaultcube.mtl" />
+    <None Remove="Assets\defaultcube.obj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\defaultcube.mtl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\defaultcube.obj">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="ILGPU" Version="0.8.0" />
     <PackageReference Include="ILGPU.Algorithms" Version="0.8.0" />
     <PackageReference Include="OpenTK" Version="3.2.0" />

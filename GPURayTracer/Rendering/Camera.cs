@@ -115,7 +115,7 @@ namespace GPURayTracer.Rendering
         public static Camera UpdateMovement(Camera camera, InputManager input)
         {
             Vec3 movement = new Vec3();
-            float speed = 0.04f;
+            float speed = 0.01f;
             bool moved = false;
 
             if (input.IsKeyHeld(OpenTK.Input.Key.W))

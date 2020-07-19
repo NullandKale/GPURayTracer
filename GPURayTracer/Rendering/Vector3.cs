@@ -168,7 +168,7 @@ namespace GPURayTracer.Rendering
                 return niOverNt * (uv - (n * dt)) - n * XMath.Sqrt(discriminant);
             }
 
-            return new Vec3();
+            return v;
         }
 
         public static float NormalReflectance(Vec3 normal, Vec3 incomming, float iorFrom, float iorTo)

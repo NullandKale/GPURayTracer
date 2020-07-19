@@ -55,6 +55,11 @@ namespace GPURayTracer.Rendering
             data[index] = map(data[index], min, max, 0, 1);
         }
 
+        public static void InvertedNormalize(Index1 index, ArrayView<float> data, float min, float max)
+        {
+            data[index] = map(data[index], min, max, 1, 0);
+        }
+
         public static (float min, float max) ReduceMax(Accelerator device, ArrayView<float> map)
         {
             using (var target = device.Allocate<float>(1))

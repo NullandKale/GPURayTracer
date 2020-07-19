@@ -13,10 +13,12 @@ namespace GPURayTracer.Rendering
         public Camera camera;
 
         public MemoryBuffer<float> ColorFrameBuffer0;
+        public MemoryBuffer<float> LightingFrameBuffer0;
         public MemoryBuffer<float> ZBuffer0;
         public MemoryBuffer<int> SphereIDBuffer0;
 
         public MemoryBuffer<float> ColorFrameBuffer1;
+        public MemoryBuffer<float> LightingFrameBuffer1;
         public MemoryBuffer<float> ZBuffer1;
         public MemoryBuffer<int> SphereIDBuffer1;
 
@@ -55,10 +57,12 @@ namespace GPURayTracer.Rendering
             finalFrameBuffer = device.Allocate<float>(width * height * 3);
 
             ColorFrameBuffer0 = device.Allocate<float>(width * height * 3);
+            LightingFrameBuffer0 = device.Allocate<float>(width * height * 3);
             ZBuffer0 = device.Allocate<float>(width * height);
             SphereIDBuffer0 = device.Allocate<int>(width * height);
 
             ColorFrameBuffer1 = device.Allocate<float>(width * height * 3);
+            LightingFrameBuffer1 = device.Allocate<float>(width * height * 3);
             ZBuffer1 = device.Allocate<float>(width * height);
             SphereIDBuffer1 = device.Allocate<int>(width * height);
 
@@ -70,10 +74,12 @@ namespace GPURayTracer.Rendering
             finalFrameBuffer.Dispose();
             
             ColorFrameBuffer0.Dispose();
+            LightingFrameBuffer0.Dispose();
             ZBuffer0.Dispose();
             SphereIDBuffer0.Dispose();
             
             ColorFrameBuffer1.Dispose();
+            LightingFrameBuffer1.Dispose();
             ZBuffer1.Dispose();
             SphereIDBuffer1.Dispose();
             
