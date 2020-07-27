@@ -1,12 +1,12 @@
 ﻿# NULLrender
 
-![rendered spheres](https://cdn.discordapp.com/attachments/727649424339370046/733465870365360158/TAAV2.png)
+![rendered spheres](https://i.imgur.com/EjMDWJ3.png)
 
 Nullrender is a GPU accelerated ray tracing renderer written in c#. As with most modern ray tracing performance is maintained by Temporal, Zbuffer, and Metadata driven denoising, currently at full resolution the scene above renders at 200+ fps on a rtx 2060. As of the time of writing the renderer only supports spheres with albedo and reflections, but emissive materials with shadow are in progress, as well as triangle ray tracing, and textures.
 
 My ultimate goal is to make a simple open-source component based ray traced game engine for low poly / low res games with modern graphics tech. I am up for collaboration in this, so if you are interested in this at all I would be happy to have the help.
 
-A test build to play with is available [here](https://github.com/NullandKale/GPURayTracer/releases/tag/0.0.1). If no cuda device is found it will render in CPU mode.
+A test build to play with is available [here](https://github.com/NullandKale/GPURayTracer/releases). If no cuda device is found it will render in CPU mode.
 
 ## Ways to contribute:
 
