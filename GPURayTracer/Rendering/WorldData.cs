@@ -1,4 +1,5 @@
-﻿using GPURayTracer.Rendering.Primitives;
+﻿using GPURayTracer.Rendering.GPUStructs;
+using GPURayTracer.Rendering.Primitives;
 using ILGPU;
 using ILGPU.IR.Types;
 using ILGPU.Runtime;
@@ -22,11 +23,11 @@ namespace GPURayTracer.Rendering
         private bool trianglesDirty = true;
         private bool triNormalsDirty = true;
 
-        private MemoryBuffer<int> lightSphereIDs;
-        private MemoryBuffer<Sphere> device_spheres;
-        private MemoryBuffer<MaterialData> device_materials;
-        private MemoryBuffer<Triangle> device_triangles;
-        private MemoryBuffer<Triangle> device_triNormals;
+        public MemoryBuffer<int> lightSphereIDs;
+        public MemoryBuffer<Sphere> device_spheres;
+        public MemoryBuffer<MaterialData> device_materials;
+        public MemoryBuffer<Triangle> device_triangles;
+        public MemoryBuffer<Triangle> device_triNormals;
 
         public WorldData(Accelerator device)
         {
@@ -47,9 +48,10 @@ namespace GPURayTracer.Rendering
             addTriangle(new Triangle(tl, tr, bl, boxMat));
             addTriangle(new Triangle(tr, bl, br, boxMat));
 
-            addSphere(new Sphere(new Vec3(0, 0, -0.5f), 0.25f, addMaterial(MaterialData.makeDiffuse(new Vec3(0.9, 0.5, 0.5)))));
+            addSphere(new Sphere(new Vec3(0, -1000, -0.5f), 10f, addMaterial(MaterialData.makeLight(new Vec3(1, 1, 1)))));
+            addSphere(new Sphere(new Vec3(0, -1, -0.5f), 0.25f, addMaterial(MaterialData.makeDiffuse(new Vec3(0.4, 0.2, 0.2)))));
             addSphere(new Sphere(new Vec3(0, 1000.5, -1), 1000, addMaterial(MaterialData.makeDiffuse(new Vec3(0.8, 0.8, 0.8)))));
-            addSphere(new Sphere(new Vec3(1, 0, -1), 0.5f, addMaterial(MaterialData.makeLight(new Vec3(1, 1, 1)))));
+            addSphere(new Sphere(new Vec3(1, 0, -1), 0.5f, addMaterial(MaterialData.makeDiffuse(new Vec3(0.4, 0.4, 0.9)))));
             addSphere(new Sphere(new Vec3(-1, 0, -1), 0.5f, addMaterial(MaterialData.makeGlass(new Vec3(0.9, 0.9, 0.9), 1.5f))));
 
             Random random = new Random();
@@ -61,19 +63,19 @@ namespace GPURayTracer.Rendering
                 addSphere(new Sphere(pos, size, addMaterial(MaterialData.makeDiffuse(new Vec3(random.NextDouble(), random.NextDouble(), random.NextDouble())))));
             }
 
-            for (int i = 0; i < 10; i++)
-            {
-                float size = (float)((random.NextDouble() * 0.25) + 0.25);
-                Vec3 pos = new Vec3((random.NextDouble() * 40) - 20, size / 2, (random.NextDouble() * 40) - 20);
-                if(random.NextDouble() >= 0.5)
-                {
-                    addSphere(new Sphere(pos, size, addMaterial(MaterialData.makeMirror(new Vec3(random.NextDouble(), random.NextDouble(), random.NextDouble()), i % 2 == 0 ? 0.4f : 0))));
-                }
-                else
-                {
-                    addSphere(new Sphere(pos, size, addMaterial(MaterialData.makeLight(new Vec3(random.NextDouble(), random.NextDouble(), random.NextDouble())))));
-                }
-            }
+            //for (int i = 0; i < 10; i++)
+            //{
+            //    float size = (float)((random.NextDouble() * 0.25) + 0.25);
+            //    Vec3 pos = new Vec3((random.NextDouble() * 40) - 20, size / 2, (random.NextDouble() * 40) - 20);
+            //    if (random.NextDouble() >= 0.5)
+            //    {
+            //        addSphere(new Sphere(pos, size, addMaterial(MaterialData.makeMirror(new Vec3(random.NextDouble(), random.NextDouble(), random.NextDouble()), i % 2 == 0 ? 0.4f : 0))));
+            //    }
+            //    else
+            //    {
+            //        addSphere(new Sphere(pos, size, addMaterial(MaterialData.makeLight(new Vec3(random.NextDouble(), random.NextDouble(), random.NextDouble())))));
+            //    }
+            //}
         }
 
         public int addMaterial(MaterialData toAdd)
@@ -90,25 +92,6 @@ namespace GPURayTracer.Rendering
             }
         }
 
-        public ArrayView<MaterialData> getDeviceMaterials()
-        {
-            if(materialsDirty && materials.Count > 0)
-            {
-                if(device_materials != null)
-                {
-                    device_materials.Dispose();
-                    device_materials = null;
-                }
-
-                var temp = materials.ToArray();
-                device_materials = device.Allocate<MaterialData>(temp.Length);
-                device_materials.CopyFrom(temp, Index1.Zero, Index1.Zero, device_materials.Extent);
-                materialsDirty = false;
-            }
-
-            return device_materials;
-        }
-
         public int addSphere(Sphere toAdd)
         {
             if (spheres.Contains(toAdd))
@@ -123,7 +106,53 @@ namespace GPURayTracer.Rendering
             }
         }
 
-        public ArrayView<Sphere> getDeviceSpheres()
+        public int addTriangle(Triangle toAdd)
+        {
+            Triangle normal = new Triangle(toAdd.faceNormal(), toAdd.faceNormal(), toAdd.faceNormal(), 0);
+            if (triangles.Contains(toAdd))
+            {
+                triNormals[triangles.IndexOf(toAdd)] = normal;
+                triNormalsDirty = true;
+                return triangles.IndexOf(toAdd);
+            }
+            else
+            {
+                trianglesDirty = true;
+                triNormalsDirty = true;
+
+                triangles.Add(toAdd);
+                triNormals.Add(normal);
+
+                return triangles.Count - 1;
+            }
+        }
+
+        public WorldBuffer GetWorldBuffer()
+        {
+            return new WorldBuffer(getDeviceLightSphereIDs(), getDeviceSpheres(), getDeviceMaterials(), getDeviceTriangles(), getDeviceTriNormals());
+        }
+
+        private ArrayView<MaterialData> getDeviceMaterials()
+        {
+            if (materialsDirty && materials.Count > 0)
+            {
+                if (device_materials != null)
+                {
+                    device_materials.Dispose();
+                    device_materials = null;
+                }
+
+                var temp = materials.ToArray();
+                device_materials = device.Allocate<MaterialData>(temp.Length);
+                device_materials.CopyFrom(temp, Index1.Zero, Index1.Zero, device_materials.Extent);
+                materialsDirty = false;
+            }
+
+            return device_materials;
+        }
+
+
+        private ArrayView<Sphere> getDeviceSpheres()
         {
             if (spheresDirty && spheres.Count > 0)
             {
@@ -147,7 +176,7 @@ namespace GPURayTracer.Rendering
             return device_spheres;
         }
 
-        public ArrayView<int> getDeviceLightSphereIDs()
+        private ArrayView<int> getDeviceLightSphereIDs()
         {
             if (spheresDirty && spheres.Count > 0)
             {
@@ -171,29 +200,7 @@ namespace GPURayTracer.Rendering
             return lightSphereIDs;
         }
 
-
-        public int addTriangle(Triangle toAdd)
-        {
-            Triangle normal = new Triangle(toAdd.faceNormal(), toAdd.faceNormal(), toAdd.faceNormal(), 0);
-            if (triangles.Contains(toAdd))
-            {
-                triNormals[triangles.IndexOf(toAdd)] = normal;
-                triNormalsDirty = true;
-                return triangles.IndexOf(toAdd);
-            }
-            else
-            {
-                trianglesDirty = true;
-                triNormalsDirty = true;
-                
-                triangles.Add(toAdd);
-                triNormals.Add(normal);
-
-                return triangles.Count - 1;
-            }
-        }
-
-        public ArrayView<Triangle> getDeviceTriangles()
+        private ArrayView<Triangle> getDeviceTriangles()
         {
             if (trianglesDirty && triangles.Count > 0)
             {
@@ -212,7 +219,7 @@ namespace GPURayTracer.Rendering
             return device_triangles;
         }
 
-        public ArrayView<Triangle> getDeviceTriNormals()
+        private ArrayView<Triangle> getDeviceTriNormals()
         {
             if (triNormalsDirty && triangles.Count > 0)
             {

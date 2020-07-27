@@ -1,4 +1,5 @@
-﻿using GPURayTracer.Rendering.Primitives;
+﻿using GPURayTracer.Rendering.GPUStructs;
+using GPURayTracer.Rendering.Primitives;
 using GPURayTracer.Utils;
 using ILGPU;
 using ILGPU.Algorithms;
@@ -13,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Linq;
 using System.Text;
 using System.Threading;
 
@@ -29,15 +31,21 @@ namespace GPURayTracer.Rendering
         public Context context;
         public Accelerator device;
 
-        Action<Index1, ArrayView<float>, ArrayView<float>, ArrayView<float>, ArrayView<int>, ArrayView<float>, ArrayView<MaterialData>, ArrayView<Sphere>, ArrayView<int>, ArrayView<Triangle>, ArrayView<Triangle>, Camera, int> renderKernel;
-        Action<Index1, ArrayView<float>, ArrayView<float>, ArrayView<int>, ArrayView<float>, ArrayView<float>, ArrayView<int>, float, float, int> filterKernel;
-        Action<Index1, ArrayView<float>, float, float> normalizeKernel;
+        Action<Index1, dFramebuffer, ArrayView<float>, WorldBuffer, Camera, int> renderKernel;
+        Action<Index1, dFramebuffer, dFramebuffer, float, float, int> TAAKernel;
+        Action<Index1, ArrayView<float>, ArrayView<float>, Camera, int> FilterKernel;
+        Action<Index1, ArrayView<float>, float, float> normalizeMapKernel;
+        Action<Index1, ArrayView<float>, Vec3, Vec3> normalizeLightingKernel;
+        Action<Index1, ArrayView<float>, ArrayView<float>, ArrayView<int>> combineKernel;
         Action<Index1, ArrayView<float>, ArrayView<byte>, Camera> outputKernel;
         Action<Index1, ArrayView<float>, ArrayView<byte>, Camera> outputZbufferKernel;
         Action<Index1, int, float, ArrayView<float>, ArrayView<byte>, float> generateKernel;
 
         public byte[] output;
         FrameManager frame;
+
+        float lightExponent = 0.01f;
+        Vec3 lightIntensity;
 
         public FrameData frameData;
         WorldData worldData;
@@ -68,15 +76,14 @@ namespace GPURayTracer.Rendering
             rFPStimer = new UpdateStatsTimer();
 
             generateKernel = device.LoadAutoGroupedStreamKernel<Index1, int, float, ArrayView<float>, ArrayView<byte>, float>(Noise.GenerateKernel);
-            normalizeKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, float, float>(Kernels.InvertedNormalize);
+            normalizeMapKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, float, float>(Kernels.Normalize);
+            normalizeLightingKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, Vec3, Vec3>(Kernels.NormalizeLighting);
+            combineKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<float>, ArrayView<int>>(Kernels.CombineLightingAndColor);
             outputKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<byte>, Camera>(Kernels.CreatBitmap);
             outputZbufferKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<byte>, Camera>(Kernels.CreateGrayScaleBitmap);
-            filterKernel = device.LoadAutoGroupedStreamKernel
-                <Index1, ArrayView<float>, ArrayView<float>, ArrayView<int>, ArrayView<float>, ArrayView<float>, ArrayView<int>, float, float, int>
-                (Kernels.NULLTAA);
-            renderKernel = device.LoadAutoGroupedStreamKernel
-                <Index1, ArrayView<float>, ArrayView<float>, ArrayView<float>, ArrayView<int>, ArrayView<float>, ArrayView<MaterialData>, ArrayView<Sphere>, ArrayView<int>, ArrayView<Triangle>, ArrayView<Triangle>, Camera, int>
-                (RTKernels.RenderKernel);
+            TAAKernel = device.LoadAutoGroupedStreamKernel<Index1, dFramebuffer, dFramebuffer, float, float, int>(Kernels.NULLTAA);
+            FilterKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<float>, Camera, int>(Kernels.NULLLowPassFilter);
+            renderKernel = device.LoadAutoGroupedStreamKernel<Index1, dFramebuffer, ArrayView<float>, WorldBuffer, Camera, int>(RTKernels.RenderKernel);
 
             startRenderThread();
         }
@@ -180,34 +187,76 @@ namespace GPURayTracer.Rendering
                 rng.CopyFrom(bytes, 0, 0, 512);
                 generateKernel(frameData.rngData.Extent, frameData.rngData.Extent / 100, 0.1f, frameData.rngData, rng, 1);
                 (float min, float max) = Kernels.ReduceMax(device, frameData.rngData);
-                normalizeKernel(frameData.rngData.Extent, frameData.rngData, min, max);
+                normalizeMapKernel(frameData.rngData.Extent, frameData.rngData, min, max);
             }
         }
 
         public void generateFrame()
         {
-            renderKernel(frameData.ColorFrameBuffer0.Extent / 3, 
-                frameData.ColorFrameBuffer0, frameData.LightingFrameBuffer0, frameData.ZBuffer0, frameData.SphereIDBuffer0, 
-                frameData.rngData, worldData.getDeviceMaterials(), worldData.getDeviceSpheres(), worldData.getDeviceLightSphereIDs(), worldData.getDeviceTriangles(), worldData.getDeviceTriNormals(), frameData.camera,
+            renderKernel(frameData.framebuffer0.ColorFrameBuffer.Extent / 3, 
+                frameData.framebuffer0.D, 
+                frameData.rngData, worldData.GetWorldBuffer(), frameData.camera,
                 tick);
+
+            //FilterKernel(frameData.LightingFrameBuffer0.Extent / 3,
+            //    frameData.LightingFrameBuffer0,
+            //    frameData.LightingFrameBuffer1,
+            //    frameData.camera, 3);
+
+            (Vec3 mins, Vec3 maxes) = UtilKernels.MinMaxFloatImage(device, frameData.framebuffer0.LightingFrameBuffer);
+
+            lightIntensity = (lightExponent * maxes) + ((1 - lightExponent) * lightIntensity);
+
+            normalizeLightingKernel(frameData.framebuffer0.LightingFrameBuffer.Extent / 3, frameData.framebuffer0.LightingFrameBuffer, new Vec3(), lightIntensity / 5f);
+
+            combineKernel(frameData.framebuffer0.ColorFrameBuffer.Extent / 3, frameData.framebuffer0.ColorFrameBuffer, frameData.framebuffer0.LightingFrameBuffer, frameData.framebuffer0.DrawableIDBuffer);
 
             if (MainWindow.debugZbuffer)
             {
-                (float min, float max) = Kernels.ReduceMax(device, frameData.ZBuffer0);
-                normalizeKernel(frameData.ZBuffer0.Extent, frameData.ZBuffer0, min, max);
-                outputZbufferKernel(frameData.ZBuffer0.Extent, frameData.ZBuffer0, frameData.bitmapData, frameData.camera);
+                (float min, float max) = Kernels.ReduceMax(device, frameData.framebuffer0.ZBuffer);
+                normalizeMapKernel(frameData.framebuffer0.ZBuffer.Extent, frameData.framebuffer0.ZBuffer, min, max);
+                outputZbufferKernel(frameData.framebuffer0.ZBuffer.Extent, frameData.framebuffer0.ZBuffer, frameData.bitmapData, frameData.camera);
             }
             else if (MainWindow.debugTAA)
             {
-                filterKernel(frameData.ColorFrameBuffer0.Extent / 3,
-                    frameData.ColorFrameBuffer0, frameData.ZBuffer0, frameData.SphereIDBuffer0,
-                    frameData.ColorFrameBuffer1, frameData.ZBuffer1, frameData.SphereIDBuffer1,
+                TAAKernel(frameData.framebuffer0.ColorFrameBuffer.Extent / 3,
+                    frameData.framebuffer0.D, frameData.framebuffer1.D,
                     MainWindow.debugTAADistScale, MainWindow.debugTAAScale, tick);
-                outputKernel(frameData.ColorFrameBuffer1.Extent / 3, frameData.ColorFrameBuffer1, frameData.bitmapData, frameData.camera);
+
+                //FilterKernel(frameData.ColorFrameBuffer1.Extent / 3,
+                //    frameData.ColorFrameBuffer1,
+                //    frameData.finalFrameBuffer,
+                //    frameData.camera, 3);
+
+                outputKernel(frameData.framebuffer1.ColorFrameBuffer.Extent / 3, frameData.framebuffer1.ColorFrameBuffer, frameData.bitmapData, frameData.camera);
+            }
+            else if (MainWindow.debugLighting)
+            {
+                //FilterKernel(frameData.LightingFrameBuffer0.Extent / 3,
+                //    frameData.LightingFrameBuffer0,
+                //    frameData.LightingFrameBuffer1,
+                //    frameData.camera, 3);
+
+                //(min, max) = Kernels.ReduceMax(device, frameData.LightingFrameBuffer1);
+
+                //normalizeLightingKernel(frameData.LightingFrameBuffer1.Extent / 3, frameData.LightingFrameBuffer1, min, max);
+
+                //FilterKernel(frameData.LightingFrameBuffer0.Extent / 3,
+                //    frameData.LightingFrameBuffer0,
+                //    frameData.LightingFrameBuffer1,
+                //    frameData.camera, 3);
+
+                //outputKernel(frameData.LightingFrameBuffer1.Extent / 3, frameData.LightingFrameBuffer1, frameData.bitmapData, frameData.camera);
+                outputKernel(frameData.framebuffer0.LightingFrameBuffer.Extent / 3, frameData.framebuffer0.LightingFrameBuffer, frameData.bitmapData, frameData.camera);
             }
             else
             {
-                outputKernel(frameData.LightingFrameBuffer0.Extent / 3, frameData.LightingFrameBuffer0, frameData.bitmapData, frameData.camera);
+                //FilterKernel(frameData.ColorFrameBuffer0.Extent / 3,
+                //    frameData.ColorFrameBuffer0,
+                //    frameData.finalFrameBuffer,
+                //    frameData.camera, 0);
+
+                outputKernel(frameData.framebuffer0.ColorFrameBuffer.Extent / 3, frameData.framebuffer0.ColorFrameBuffer, frameData.bitmapData, frameData.camera);
             }
 
             device.Synchronize();

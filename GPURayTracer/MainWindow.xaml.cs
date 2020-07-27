@@ -30,8 +30,9 @@ namespace GPURayTracer
 
         public static bool debugZbuffer = false;
         public static bool debugTAA = true;
+        public static bool debugLighting = false;
         public static bool debugRandomGeneration = false;
-        public static float debugTAAScale = 0.95f;
+        public static float debugTAAScale = 0.75f;
         public static float debugTAADistScale = 0.5f;
 
         public int width;
@@ -44,7 +45,7 @@ namespace GPURayTracer
         public bool forceCPU = false;
         public Point? lastMousePos;
         public bool mouseDebounce = true;
-        public bool mouseEnabled = true;
+        public bool mouseEnabled = false;
 
         public FrameManager frame;
         public bool readyForUpdate = false;
@@ -56,7 +57,7 @@ namespace GPURayTracer
             InitializeComponent();
             Closed += MainWindow_Closed;
             SizeChanged += Window_SizeChanged;
-            Frame.Cursor = Cursors.None;
+            if(mouseEnabled) Frame.Cursor = Cursors.None;
             taaLabel.Content = debugTAA && !debugZbuffer ? string.Format("TAA ON # {0:0.##}", debugTAAScale) : "TAA OFF";
             taaDistLabel.Content = debugTAA && !debugZbuffer ? string.Format("TAA dist {0:0.##}", debugTAADistScale) : "TAA OFF";
             taaSlider.Value = debugTAAScale;
@@ -211,17 +212,28 @@ namespace GPURayTracer
             if (e.Key == Key.T)
             {
                 debugTAA = !debugTAA;
+                debugZbuffer = false;
+                debugLighting = false;
             }
 
             if (e.Key == Key.Y)
             {
                 debugZbuffer = !debugZbuffer;
+                debugTAA = false;
+                debugLighting = false;
             }
 
             if (e.Key == Key.U)
             {
                 debugRandomGeneration = !debugRandomGeneration;
                 Window_SizeChanged(sender, null);
+            }
+
+            if (e.Key == Key.I)
+            {
+                debugLighting = !debugLighting;
+                debugZbuffer = false;
+                debugTAA = false;
             }
 
             if (e.Key == Key.Escape)
