@@ -92,17 +92,15 @@ namespace GPURayTracer
                 Point relativePoint = TransformToAncestor(this).Transform(new Point(0, 0));
                 Point pt = new Point(relativePoint.X + grid.ActualWidth / 2, relativePoint.Y + grid.ActualHeight / 2);
                 Point windowCenterPoint = pt;
-                Point centerPointRelativeToSCreen = this.PointToScreen(windowCenterPoint);
+                Point centerPointRelativeToSCreen = PointToScreen(windowCenterPoint);
                 SetCursorPos((int)centerPointRelativeToSCreen.X, (int)centerPointRelativeToSCreen.Y);
                 lastMousePos = null;
                 mouseDebounce = true;
             }
 
-
-
            Trace.WriteLine("X: " + width + " " + (width * 3) + " " + ((width * 3) % 4));
-            width += ((width * 3) % 4);
-            Trace.WriteLine("fixed X: " + width + " " + (width * 3) + " " + ((width * 3) % 4));
+           width += ((width * 3) % 4);
+           Trace.WriteLine("fixed X: " + width + " " + (width * 3) + " " + ((width * 3) % 4));
             restartRenderer();
         }
 

@@ -1,4 +1,5 @@
-﻿using GPURayTracer.Rendering.Primitives;
+﻿using GPURayTracer.Rendering;
+using GPURayTracer.Rendering.Primitives;
 using ILGPU.IR.Values;
 using ILGPU.Runtime;
 using System;
@@ -9,9 +10,16 @@ namespace GPURayTracer.Loaders
 {
     public static class MeshLoader
     {
-        public static MaterialData LoadMaterialsFromFile(string filename)
+        public static List<MaterialData> LoadMaterialsFromFile(string filename)
         {
-            return new MaterialData();
+            List<MaterialData> materials = new List<MaterialData>();
+
+            MaterialData material = new MaterialData();
+            int illum = 2;
+            Vec3 ambientColor = new Vec3();
+
+
+            return materials;
         }
 
         public static GPUMesh LoadMeshFromFile(Accelerator accelerator, string filename, int material)

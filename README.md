@@ -2,7 +2,7 @@
 
 ![rendered spheres](https://i.imgur.com/EjMDWJ3.png)
 
-Nullrender is a GPU accelerated ray tracing renderer written in c#. As with most modern ray tracing performance is maintained by Temporal, Zbuffer, and Metadata driven denoising, currently at full resolution the scene above renders at 200+ fps on a rtx 2060. As of the time of writing the renderer only supports spheres with albedo and reflections, but emissive materials with shadow are in progress, as well as triangle ray tracing, and textures.
+Nullrender is a GPU accelerated ray tracing renderer written in c#. As with most modern ray tracing performance is maintained by Temporal, Zbuffer, and Metadata driven denoising, currently at full resolution the scene above renders at 60+ fps on a rtx 2060. As of the time of writing the renderer supports spheres and triangles with albedo, refractions, reflections, and shadows, as well as sphere lights. Full mesh loading is currently in the works.
 
 My ultimate goal is to make a simple open-source component based ray traced game engine for low poly / low res games with modern graphics tech. I am up for collaboration in this, so if you are interested in this at all I would be happy to have the help.
 
@@ -30,16 +30,14 @@ Dotnet WPF also has planned linux support so linux is a possibility as well.
 
 ## Features currently being worked on:
 
-- Shadows and Reflections from emissive materials
-- Triangle hit detection
+- Texture mapping and memory management
+- Sparse Voxel Ray tracing
 - Triangle meshes and mesh memory management
 
 ## Planned features that need help:
 
 - Spatio-Temporal Denoising  
-- Sparse Voxel Ray tracing
 - Blue noise for RNG
-- Texture mapping and memory management
 - Normal maps
 - BVH object hit 
 - Water Material with caustics?

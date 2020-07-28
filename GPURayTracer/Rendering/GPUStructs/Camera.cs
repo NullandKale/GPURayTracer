@@ -7,23 +7,23 @@ using GPURayTracer.Utils;
 
 namespace GPURayTracer.Rendering
 {
-    public readonly struct Camera
+    public struct Camera
     {
-        public readonly int height;
-        public readonly int width;
-        public readonly int maxBounces;
-        public readonly int extraRenderPasses;
-        public readonly float verticalFov;
+        public int height;
+        public int width;
+        public int maxBounces;
+        public int extraRenderPasses;
+        public float verticalFov;
 
-        public readonly Vec3 origin;
-        public readonly Vec3 lookAt;
-        public readonly Vec3 up;
-        public readonly OrthoNormalBasis axis;
+        public Vec3 origin;
+        public Vec3 lookAt;
+        public Vec3 up;
+        public OrthoNormalBasis axis;
 
-        public readonly float aspectRatio;
-        public readonly float cameraPlaneDist;
-        public readonly float reciprocalHeight;
-        public readonly float reciprocalWidth;
+        public float aspectRatio;
+        public float cameraPlaneDist;
+        public float reciprocalHeight;
+        public float reciprocalWidth;
 
         public Camera(Camera camera, Vec3 movement, Vec3 turn)
         {
