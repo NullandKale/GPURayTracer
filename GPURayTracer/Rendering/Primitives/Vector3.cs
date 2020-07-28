@@ -186,7 +186,12 @@ namespace GPURayTracer.Rendering
             float rParallel = (iorFrom * cosThetaI - iorTo * cosThetaT) / (iorFrom * cosThetaI + iorTo * cosThetaT);
             return (rPerpendicular * rPerpendicular + rParallel * rParallel) / 2;
         }
-
+        public static bool Equals(Vec3 a, Vec3 b)
+        {
+            return a.x == b.x &&
+                   a.y == b.y &&
+                   a.z == b.z;
+        }
         public static implicit operator Vector3(Vec3 d)
         {
             return new Vector3((float)d.x, (float)d.y, (float)d.z);

@@ -86,7 +86,13 @@ namespace GPURayTracer.Rendering
             Vec3 col   = new Vec3(color[rIndex], color[gIndex], color[bIndex]);
             Vec3 light = new Vec3(lights[rIndex], lights[gIndex], lights[bIndex]);
 
-            if(sphereIDs[index] == -2)
+            if (sphereIDs[index] == -3)
+            {
+                color[rIndex] = 1;
+                color[gIndex] = 0;
+                color[bIndex] = 1;
+            }
+            else if (sphereIDs[index] == -2)
             {
                 color[rIndex] = col.x;
                 color[gIndex] = col.y;
@@ -94,9 +100,9 @@ namespace GPURayTracer.Rendering
             }
             else if (sphereIDs[index] == -1)
             {
-                color[rIndex] = 1;
-                color[gIndex] = 0;
-                color[bIndex] = 1;
+                color[rIndex] = col.x * minLight;
+                color[gIndex] = col.y * minLight;
+                color[bIndex] = col.z * minLight;
             }
             else if(light.x == -1)
             {
@@ -172,13 +178,12 @@ namespace GPURayTracer.Rendering
             int newID = srcFramebuffer.DrawableIDBuffer[index];
 
             float lastDepth = dstFramebuffer.ZBuffer[index];
-            int lastID = dstFramebuffer.DrawableIDBuffer[index];
 
             int rIndex = index * 3;
             int gIndex = rIndex + 1;
             int bIndex = gIndex + 1;
 
-            if (XMath.Abs(newDepth - lastDepth) > depthFuzz || tick == 0 || newID != lastID || newID == -1)
+            if (XMath.Abs(newDepth - lastDepth) > depthFuzz || tick == 0)
             {
                 dstFramebuffer.ColorFrameBuffer[rIndex] = srcFramebuffer.ColorFrameBuffer[rIndex];
                 dstFramebuffer.ColorFrameBuffer[gIndex] = srcFramebuffer.ColorFrameBuffer[gIndex];

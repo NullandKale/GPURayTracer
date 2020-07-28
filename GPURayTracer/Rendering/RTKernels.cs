@@ -47,22 +47,18 @@ namespace GPURayTracer.Rendering
             Vec3 lighting = new Vec3(-1, -1, -1);
             Ray working = ray;
             bool lightingHasValue = false;
+            bool attenuationHasValue = false;
 
-            for(int i = 0; i < camera.maxBounces; i++)
+            for (int i = 0; i < camera.maxBounces; i++)
             {
                 HitRecord rec = GetWorldHit(working, spheres, triangles, triNorms);
 
                 if (rec.materialID == -1)
                 {
-                    if (i == 0)
+                    if(i == 0 || attenuationHasValue)
                     {
                         sphereIDBuffer[index] = -2;
                     }
-                    //else
-                    //{
-                    //    sphereIDBuffer[index] = -1;
-                    //}
-
 
                     Vec3 unit_direction = Vec3.unitVector(working.b);
                     float t = 0.5f * (unit_direction.y + 1.0f);
@@ -81,12 +77,17 @@ namespace GPURayTracer.Rendering
                     ScatterRecord sRec = Scatter(working, rec, rngStartIndex + i, rngData, materials);
                     if(sRec.materialID != -1)
                     {
+                        if(sRec.needsLighting)
+                        {
+                            attenuationHasValue = true;
+                        }
                         attenuation *= sRec.attenuation;
                         working = sRec.scatterRay;
                     }
                     else
                     {
                         sphereIDBuffer[index] = -1;
+                        i = camera.maxBounces;
                     }
                 }
 
@@ -209,7 +210,7 @@ namespace GPURayTracer.Rendering
                 Vec3 pVec = Vec3.cross(r.b, tvVec);
                 float det = Vec3.dot(tuVec, pVec);
 
-                if (XMath.Abs(det) > 0.00001f)
+                if (XMath.Abs(det) > 0.000001f)
                 {
                     float invDet = 1.0f / det;
                     Vec3 tVec = r.a - t.Vert0;
@@ -217,14 +218,14 @@ namespace GPURayTracer.Rendering
                     Vec3 qVec = Vec3.cross(tVec, tuVec);
                     float v = Vec3.dot(r.b, qVec) * invDet;
 
-                    if (u < 0.001f || u > 1.0f || v < 0.001f || u + v > 1.0f)
+                    if (u < 0.0001f || u > 1.0f || v < 0.0001f || u + v > 1.0f)
                     {
                         continue;
                     }
                     else
                     {
                         float temp = Vec3.dot(tvVec, qVec) * invDet;
-                        if (temp > 0.00001f && temp < currentNearestDist)
+                        if (temp > 0.000001f && temp < currentNearestDist)
                         {
                             currentNearestDist = temp;
                             NcurrentIndex = i;
@@ -258,12 +259,7 @@ namespace GPURayTracer.Rendering
             if (material.type == 0) //Diffuse
             {
                 Vec3 target = rec.p + rec.normal + RandomUnitVector(rngStartIndex, rngData);
-                return new ScatterRecord(rec.materialID, new Ray(rec.p, target - rec.p), material.diffuseColor);
-            }
-            else if (material.type == 3) //Lights
-            {
-                Vec3 target = rec.p + rec.normal + RandomUnitVector(rngStartIndex, rngData);
-                return new ScatterRecord(rec.materialID, new Ray(rec.p, target - rec.p), material.emmissiveColor);
+                return new ScatterRecord(rec.materialID, new Ray(rec.p, target - rec.p), material.diffuseColor, false);
             }
             else if (material.type == 1) // dielectric
             {
@@ -314,7 +310,7 @@ namespace GPURayTracer.Rendering
                     ray = new Ray(rec.p, refracted);
                 }
 
-                return new ScatterRecord(rec.materialID, ray, new Vec3(1, 1, 1));
+                return new ScatterRecord(rec.materialID, ray, material.diffuseColor, true);
 
             }
             else if (material.type == 2) //Metal
@@ -332,11 +328,16 @@ namespace GPURayTracer.Rendering
 
                 if ((Vec3.dot(scattered.b, rec.normal) > 0))
                 {
-                    return new ScatterRecord(rec.materialID, scattered, material.diffuseColor);
+                    return new ScatterRecord(rec.materialID, scattered, material.diffuseColor, true);
                 }
             }
+            else if (material.type == 3) //Lights
+            {
+                Vec3 target = rec.p + rec.normal + RandomUnitVector(rngStartIndex, rngData);
+                return new ScatterRecord(rec.materialID, new Ray(rec.p, target - rec.p), material.emmissiveColor, false);
+            }
 
-            return new ScatterRecord(-1, r, new Vec3());
+            return new ScatterRecord(-1, r, new Vec3(), true);
         }
 
         private static float getNext(ArrayView<float> data, int index)
@@ -357,12 +358,14 @@ namespace GPURayTracer.Rendering
         public readonly int materialID;
         public readonly Ray scatterRay;
         public readonly Vec3 attenuation;
+        public readonly bool needsLighting;
 
-        public ScatterRecord(int materialID, Ray scatterRay, Vec3 attenuation)
+        public ScatterRecord(int materialID, Ray scatterRay, Vec3 attenuation, bool needsLighting)
         {
             this.materialID = materialID;
             this.scatterRay = scatterRay;
             this.attenuation = attenuation;
+            this.needsLighting = needsLighting;
         }
     }
 

@@ -38,44 +38,31 @@ namespace GPURayTracer.Rendering
             triNormals = new List<Triangle>();
             triangles = new List<Triangle>();
 
-            int boxMat = addMaterial(MaterialData.makeDiffuse(new Vec3(0.20, 0.30, 0.36)));
+            int boxMat0 = addMaterial(MaterialData.makeMirror(new Vec3(0.6, 0.6, 0.9), 0));
+            int boxMat1 = addMaterial(MaterialData.makeMirror(new Vec3(0.6, 0.6, 0.9), 0.9f));
 
             Vec3 tl = new Vec3(-0.5f, -0.5f, -0.5f);
             Vec3 tr = new Vec3(0.5f, -0.5f, -0.5f);
             Vec3 bl = new Vec3(-0.5f, 0.5f, -0.5f);
             Vec3 br = new Vec3(0.5f, 0.5f, -0.5f);
 
-            addTriangle(new Triangle(tl, tr, bl, boxMat));
-            addTriangle(new Triangle(tr, bl, br, boxMat));
+            addTriangle(new Triangle(tl, tr, bl, boxMat0));
+            addTriangle(new Triangle(tr, bl, br, boxMat1));
 
             addSphere(new Sphere(new Vec3(0, -1000, -0.5f), 10f, addMaterial(MaterialData.makeLight(new Vec3(1, 1, 1)))));
             addSphere(new Sphere(new Vec3(0, -1, -0.5f), 0.25f, addMaterial(MaterialData.makeDiffuse(new Vec3(0.4, 0.2, 0.2)))));
-            addSphere(new Sphere(new Vec3(0, 1000.5, -1), 1000, addMaterial(MaterialData.makeDiffuse(new Vec3(0.8, 0.8, 0.8)))));
-            addSphere(new Sphere(new Vec3(1, 0, -1), 0.5f, addMaterial(MaterialData.makeDiffuse(new Vec3(0.4, 0.4, 0.9)))));
-            addSphere(new Sphere(new Vec3(-1, 0, -1), 0.5f, addMaterial(MaterialData.makeGlass(new Vec3(0.9, 0.9, 0.9), 1.5f))));
+            addSphere(new Sphere(new Vec3(0, 1000.5, -1), 1000, addMaterial(MaterialData.makeDiffuse(new Vec3(0.99f, 0.99f, 0.99f)))));
+            addSphere(new Sphere(new Vec3(1, 0, -1), 0.5f, addMaterial(MaterialData.makeMirror( new Vec3(0.99f, 0.99f, 0.99f), 0f))));
+            addSphere(new Sphere(new Vec3(-1, 0, -1), 0.5f, addMaterial(MaterialData.makeMirror(new Vec3(0.99f, 0.99f, 0.99f), 0f))));
 
             Random random = new Random();
 
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < 25; i++)
             {
                 float size = (float)((random.NextDouble() * 0.25) + 0.25);
-                Vec3 pos = new Vec3((random.NextDouble() * 40) - 20, size / 2, (random.NextDouble() * 40) - 20);
+                Vec3 pos = new Vec3((random.NextDouble() * 10) - 5, size / 2, (random.NextDouble() * 10) - 5);
                 addSphere(new Sphere(pos, size, addMaterial(MaterialData.makeDiffuse(new Vec3(random.NextDouble(), random.NextDouble(), random.NextDouble())))));
             }
-
-            //for (int i = 0; i < 10; i++)
-            //{
-            //    float size = (float)((random.NextDouble() * 0.25) + 0.25);
-            //    Vec3 pos = new Vec3((random.NextDouble() * 40) - 20, size / 2, (random.NextDouble() * 40) - 20);
-            //    if (random.NextDouble() >= 0.5)
-            //    {
-            //        addSphere(new Sphere(pos, size, addMaterial(MaterialData.makeMirror(new Vec3(random.NextDouble(), random.NextDouble(), random.NextDouble()), i % 2 == 0 ? 0.4f : 0))));
-            //    }
-            //    else
-            //    {
-            //        addSphere(new Sphere(pos, size, addMaterial(MaterialData.makeLight(new Vec3(random.NextDouble(), random.NextDouble(), random.NextDouble())))));
-            //    }
-            //}
         }
 
         public int addMaterial(MaterialData toAdd)
