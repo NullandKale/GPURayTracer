@@ -38,8 +38,7 @@ namespace GPURayTracer.Rendering
             triNormals = new List<Triangle>();
             triangles = new List<Triangle>();
 
-            int boxMat0 = addMaterial(MaterialData.makeMirror(new Vec3(0.6, 0.6, 0.9), 0));
-            int boxMat1 = addMaterial(MaterialData.makeMirror(new Vec3(0.6, 0.6, 0.9), 0.9f));
+            int boxMat0 = addMaterial(MaterialData.makeMirror(new Vec3(1, 1, 1), 0));
 
             Vec3 tl = new Vec3(-0.5f, -0.5f, -0.5f);
             Vec3 tr = new Vec3(0.5f, -0.5f, -0.5f);
@@ -47,12 +46,12 @@ namespace GPURayTracer.Rendering
             Vec3 br = new Vec3(0.5f, 0.5f, -0.5f);
 
             addTriangle(new Triangle(tl, tr, bl, boxMat0));
-            addTriangle(new Triangle(tr, bl, br, boxMat1));
+            addTriangle(new Triangle(tr, bl, br, boxMat0));
 
-            addSphere(new Sphere(new Vec3(0, -1000, -0.5f), 10f, addMaterial(MaterialData.makeLight(new Vec3(1, 1, 1)))));
+            addSphere(new Sphere(new Vec3(100, -1000, -200f), 10f, addMaterial(MaterialData.makeLight(new Vec3(1, 0.95, 0.85)))));
             addSphere(new Sphere(new Vec3(0, -1, -0.5f), 0.25f, addMaterial(MaterialData.makeDiffuse(new Vec3(0.4, 0.2, 0.2)))));
             addSphere(new Sphere(new Vec3(0, 1000.5, -1), 1000, addMaterial(MaterialData.makeDiffuse(new Vec3(0.99f, 0.99f, 0.99f)))));
-            addSphere(new Sphere(new Vec3(1, 0, -1), 0.5f, addMaterial(MaterialData.makeMirror( new Vec3(0.99f, 0.99f, 0.99f), 0f))));
+            addSphere(new Sphere(new Vec3(1, 0, -1), 0.5f, addMaterial(MaterialData.makeGlass( new Vec3(0.99f, 0.99f, 0.99f), 2f))));
             addSphere(new Sphere(new Vec3(-1, 0, -1), 0.5f, addMaterial(MaterialData.makeMirror(new Vec3(0.99f, 0.99f, 0.99f), 0f))));
 
             Random random = new Random();

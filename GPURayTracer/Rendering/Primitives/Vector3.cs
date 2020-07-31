@@ -145,6 +145,12 @@ namespace GPURayTracer.Rendering
                             v1.x * v2.y - v1.y * v2.x);
         }
 
+        public static Vec3 calcLightIntensity (Vec3 v)
+        {
+            float average = (v.x + v.y + v.z) / 3f;
+            return new Vec3(average, average, average);
+        }
+
 
         public static Vec3 unitVector(Vec3 v)
         {
@@ -185,6 +191,18 @@ namespace GPURayTracer.Rendering
             float rPerpendicular = (iorFrom * cosThetaI - iorTo * cosThetaT) / (iorFrom * cosThetaI + iorTo * cosThetaT);
             float rParallel = (iorFrom * cosThetaI - iorTo * cosThetaT) / (iorFrom * cosThetaI + iorTo * cosThetaT);
             return (rPerpendicular * rPerpendicular + rParallel * rParallel) / 2;
+        }
+
+        public static Vec3 aces_approx(Vec3 v)
+        {
+            v *= 0.6f;
+            float a = 2.51f;
+            float b = 0.03f;
+            float c = 2.43f;
+            float d = 0.59f;
+            float e = 0.14f;
+            Vec3 working = (v * (a * v + b)) / (v * (c * v + d) + e);
+            return new Vec3(XMath.Clamp(working.x, 0, 1), XMath.Clamp(working.y, 0, 1), XMath.Clamp(working.z, 0, 1));
         }
         public static bool Equals(Vec3 a, Vec3 b)
         {

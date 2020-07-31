@@ -32,8 +32,8 @@ namespace GPURayTracer
         public static bool debugTAA = true;
         public static bool debugLighting = false;
         public static bool debugRandomGeneration = false;
-        public static float debugTAAScale = 0.75f;
-        public static float debugTAADistScale = 0.5f;
+        public static float debugTAAScale = 0.25f;
+        public static float debugTAADistScale = 2f;
 
         public int width;
         public int height;

@@ -55,7 +55,7 @@ namespace GPURayTracer.Rendering
             data[index] = map(data[index], min, max, 0, 1);
         }
 
-        public static void NormalizeLighting(Index1 index, ArrayView<float> data, Vec3 mins, Vec3 maxes)
+        public static void NormalizeLighting(Index1 index, ArrayView<float> data)
         {
             int rIndex = index * 3;
             int gIndex = rIndex + 1;
@@ -63,12 +63,12 @@ namespace GPURayTracer.Rendering
 
             if(data[rIndex] != -1)
             {
-                data[rIndex] = map(data[rIndex], mins.x, maxes.x, 0, 1);
-                data[gIndex] = map(data[gIndex], mins.y, maxes.y, 0, 1);
-                data[bIndex] = map(data[bIndex], mins.z, maxes.z, 0, 1);
+                Vec3 color = Vec3.aces_approx(new Vec3(data[rIndex], data[gIndex], data[bIndex]));
+                data[rIndex] = color.x;
+                data[gIndex] = color.y;
+                data[bIndex] = color.z;
             }
         }
-
 
         public static void InvertedNormalize(Index1 index, ArrayView<float> data, float min, float max)
         {
@@ -183,7 +183,7 @@ namespace GPURayTracer.Rendering
             int gIndex = rIndex + 1;
             int bIndex = gIndex + 1;
 
-            if (XMath.Abs(newDepth - lastDepth) > depthFuzz || tick == 0)
+            if (/*XMath.Abs(newDepth - lastDepth) > depthFuzz || */tick == 0)
             {
                 dstFramebuffer.ColorFrameBuffer[rIndex] = srcFramebuffer.ColorFrameBuffer[rIndex];
                 dstFramebuffer.ColorFrameBuffer[gIndex] = srcFramebuffer.ColorFrameBuffer[gIndex];

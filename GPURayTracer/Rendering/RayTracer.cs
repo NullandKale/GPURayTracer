@@ -35,7 +35,7 @@ namespace GPURayTracer.Rendering
         Action<Index1, dFramebuffer, dFramebuffer, float, float, int> TAAKernel;
         Action<Index1, ArrayView<float>, ArrayView<float>, Camera, int> FilterKernel;
         Action<Index1, ArrayView<float>, float, float> normalizeMapKernel;
-        Action<Index1, ArrayView<float>, Vec3, Vec3> normalizeLightingKernel;
+        Action<Index1, ArrayView<float>> normalizeLightingKernel;
         Action<Index1, ArrayView<float>, ArrayView<float>, ArrayView<int>> combineKernel;
         Action<Index1, ArrayView<float>, ArrayView<byte>, Camera> outputKernel;
         Action<Index1, ArrayView<float>, ArrayView<byte>, Camera> outputZbufferKernel;
@@ -44,7 +44,7 @@ namespace GPURayTracer.Rendering
         public byte[] output;
         FrameManager frame;
 
-        float lightExponent = 0.01f;
+        float lightExponent = 0.2f;
         Vec3 lightIntensity;
 
         public FrameData frameData;
@@ -77,7 +77,7 @@ namespace GPURayTracer.Rendering
 
             generateKernel = device.LoadAutoGroupedStreamKernel<Index1, int, float, ArrayView<float>, ArrayView<byte>, float>(Noise.GenerateKernel);
             normalizeMapKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, float, float>(Kernels.Normalize);
-            normalizeLightingKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, Vec3, Vec3>(Kernels.NormalizeLighting);
+            normalizeLightingKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>>(Kernels.NormalizeLighting);
             combineKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<float>, ArrayView<int>>(Kernels.CombineLightingAndColor);
             outputKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<byte>, Camera>(Kernels.CreatBitmap);
             outputZbufferKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<byte>, Camera>(Kernels.CreateGrayScaleBitmap);
@@ -203,14 +203,6 @@ namespace GPURayTracer.Rendering
             //    frameData.LightingFrameBuffer1,
             //    frameData.camera, 3);
 
-            (Vec3 mins, Vec3 maxes) = UtilKernels.MinMaxFloatImage(device, frameData.framebuffer0.LightingFrameBuffer);
-
-            lightIntensity = (lightExponent * maxes) + ((1 - lightExponent) * lightIntensity);
-
-            normalizeLightingKernel(frameData.framebuffer0.LightingFrameBuffer.Extent / 3, frameData.framebuffer0.LightingFrameBuffer, new Vec3(), lightIntensity / 5f);
-
-            combineKernel(frameData.framebuffer0.ColorFrameBuffer.Extent / 3, frameData.framebuffer0.ColorFrameBuffer, frameData.framebuffer0.LightingFrameBuffer, frameData.framebuffer0.DrawableIDBuffer);
-
             if (MainWindow.debugZbuffer)
             {
                 (float min, float max) = Kernels.ReduceMax(device, frameData.framebuffer0.ZBuffer);
@@ -219,6 +211,15 @@ namespace GPURayTracer.Rendering
             }
             else if (MainWindow.debugTAA)
             {
+                normalizeLightingKernel(frameData.framebuffer0.LightingFrameBuffer.Extent / 3, 
+                    frameData.framebuffer0.LightingFrameBuffer);
+
+                combineKernel(frameData.framebuffer0.ColorFrameBuffer.Extent / 3, 
+                    frameData.framebuffer0.ColorFrameBuffer, 
+                    frameData.framebuffer0.LightingFrameBuffer, 
+                    frameData.framebuffer0.DrawableIDBuffer);
+
+
                 TAAKernel(frameData.framebuffer0.ColorFrameBuffer.Extent / 3,
                     frameData.framebuffer0.D, frameData.framebuffer1.D,
                     MainWindow.debugTAADistScale, MainWindow.debugTAAScale, tick);
@@ -232,10 +233,10 @@ namespace GPURayTracer.Rendering
             }
             else if (MainWindow.debugLighting)
             {
-                //FilterKernel(frameData.LightingFrameBuffer0.Extent / 3,
-                //    frameData.LightingFrameBuffer0,
-                //    frameData.LightingFrameBuffer1,
-                //    frameData.camera, 3);
+                FilterKernel(frameData.framebuffer0.LightingFrameBuffer.Extent / 3,
+                    frameData.framebuffer0.LightingFrameBuffer,
+                    frameData.framebuffer1.LightingFrameBuffer,
+                    frameData.camera, 3);
 
                 //(min, max) = Kernels.ReduceMax(device, frameData.LightingFrameBuffer1);
 
@@ -251,10 +252,14 @@ namespace GPURayTracer.Rendering
             }
             else
             {
-                //FilterKernel(frameData.ColorFrameBuffer0.Extent / 3,
-                //    frameData.ColorFrameBuffer0,
-                //    frameData.finalFrameBuffer,
-                //    frameData.camera, 0);
+                normalizeLightingKernel(frameData.framebuffer0.LightingFrameBuffer.Extent / 3,
+                    frameData.framebuffer0.LightingFrameBuffer);
+
+                combineKernel(frameData.framebuffer0.ColorFrameBuffer.Extent / 3,
+                    frameData.framebuffer0.ColorFrameBuffer,
+                    frameData.framebuffer0.LightingFrameBuffer,
+                    frameData.framebuffer0.DrawableIDBuffer);
+
 
                 outputKernel(frameData.framebuffer0.ColorFrameBuffer.Extent / 3, frameData.framebuffer0.ColorFrameBuffer, frameData.bitmapData, frameData.camera);
             }
