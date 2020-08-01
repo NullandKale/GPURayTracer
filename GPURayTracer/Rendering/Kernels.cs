@@ -77,8 +77,6 @@ namespace GPURayTracer.Rendering
 
         public static void CombineLightingAndColor(Index1 index, ArrayView<float> color, ArrayView<float> lights, ArrayView<int> sphereIDs)
         {
-            float minLight = 0.000005f;
-
             int rIndex = index * 3;
             int gIndex = rIndex + 1;
             int bIndex = rIndex + 2;
@@ -86,58 +84,23 @@ namespace GPURayTracer.Rendering
             Vec3 col   = new Vec3(color[rIndex], color[gIndex], color[bIndex]);
             Vec3 light = new Vec3(lights[rIndex], lights[gIndex], lights[bIndex]);
 
-            if (sphereIDs[index] == -3)
-            {
-                color[rIndex] = 1;
-                color[gIndex] = 0;
-                color[bIndex] = 1;
-            }
-            else if (sphereIDs[index] == -2)
+            if (sphereIDs[index] == -2)
             {
                 color[rIndex] = col.x;
                 color[gIndex] = col.y;
                 color[bIndex] = col.z;
             }
-            else if (sphereIDs[index] == -1)
+            else if (sphereIDs[index] == -1 || light.x == -1)
             {
-                color[rIndex] = col.x * minLight;
-                color[gIndex] = col.y * minLight;
-                color[bIndex] = col.z * minLight;
-            }
-            else if(light.x == -1)
-            {
-                color[rIndex] = col.x * minLight;
-                color[gIndex] = col.y * minLight;
-                color[bIndex] = col.z * minLight;
+                color[rIndex] = 0;
+                color[gIndex] = 0;
+                color[bIndex] = 0;
             }
             else
             {
-                if(light.x < minLight)
-                {
-                    color[rIndex] = col.x * minLight;
-                }
-                else
-                {
-                    color[rIndex] = (col.x * (light.x));
-                }
-
-                if (light.y < minLight)
-                {
-                    color[gIndex] = col.y * minLight;
-                }
-                else
-                {
-                    color[gIndex] = (col.y * (light.y));
-                }
-
-                if (light.z < minLight)
-                {
-                    color[bIndex] = col.z * minLight;
-                }
-                else
-                {
-                    color[bIndex] = (col.z * (light.z));
-                }
+                color[rIndex] = col.x * light.x;
+                color[gIndex] = col.y * light.y;
+                color[bIndex] = col.z * light.z;
             }
         }
         public static (float min, float max) ReduceMax(Accelerator device, ArrayView<float> map)
@@ -176,8 +139,6 @@ namespace GPURayTracer.Rendering
 
             float newDepth = srcFramebuffer.ZBuffer[index];
             int newID = srcFramebuffer.DrawableIDBuffer[index];
-
-            float lastDepth = dstFramebuffer.ZBuffer[index];
 
             int rIndex = index * 3;
             int gIndex = rIndex + 1;
@@ -228,44 +189,41 @@ namespace GPURayTracer.Rendering
             int bIndex = rIndex + 2;
 
             float filterWidthHalf = filterWidth / 2f;
+            Vec3 fuzzedColor = new Vec3();
+            float sampleCounter = 0;
 
-            if (x >= filterWidth && x <= camera.width - filterWidth && y >= filterWidth && y <= camera.width - filterWidth)
+            for (int i = 0; i < filterWidth; i++)
             {
-                float distMax = XMath.Sqrt((filterWidthHalf * filterWidthHalf) + (filterWidthHalf * filterWidthHalf)) * 1.1f;
-
-                Vec3 fuzzedColor = new Vec3(srcColor[rIndex], srcColor[gIndex], srcColor[bIndex]);
-                float sampleCounter = 1;
-
-                for (int i = 0; i < filterWidth; i++)
+                for (int j = 0; j < filterWidth; j++)
                 {
-                    for (int j = 0; j < filterWidth; j++)
+                    int imageX = (x + (i - (int)filterWidthHalf));
+                    int imageY = (y + (j - (int)filterWidthHalf));
+
+                    int newIndex = ((imageY * camera.width) + imageX);
+
+                    if (newIndex >= 0 && newIndex <= srcColor.Length / 3)
                     {
-                        int imageX = (x + (i - (int)filterWidthHalf));
-                        int imageY = (y + (j - (int)filterWidthHalf));
+                        int r = newIndex * 3;
+                        int g = r + 1;
+                        int b = r + 2;
 
-                        int newIndex = ((imageY * camera.width) + imageX);
-                        if (newIndex < srcColor.Length / 3)
+                        if(srcColor[r] > 0)
                         {
-                            int r = newIndex * 3;
-                            int g = r + 1;
-                            int b = r + 2;
-
-                            float distMult = 1.0f / (XMath.Sqrt(((i - x) * (i - x)) + ((j - y) * (j - y))) / distMax);
-
-                            fuzzedColor += new Vec3(srcColor[r] * distMult, srcColor[g] * distMult, srcColor[b] * distMult);
+                            fuzzedColor += new Vec3(srcColor[r], srcColor[g], srcColor[b]);
                             sampleCounter++;
                         }
                     }
                 }
+            }
 
+            if (sampleCounter > 1)
+            {
                 dstColor[rIndex] = fuzzedColor.x / sampleCounter;
                 dstColor[gIndex] = fuzzedColor.y / sampleCounter;
                 dstColor[bIndex] = fuzzedColor.z / sampleCounter;
             }
             else
             {
-                Vec3 fuzzedColor = new Vec3(srcColor[rIndex], srcColor[gIndex], srcColor[bIndex]);
-
                 dstColor[rIndex] = fuzzedColor.x;
                 dstColor[gIndex] = fuzzedColor.y;
                 dstColor[bIndex] = fuzzedColor.z;

@@ -32,7 +32,7 @@ namespace GPURayTracer
         public static bool debugTAA = true;
         public static bool debugLighting = false;
         public static bool debugRandomGeneration = false;
-        public static float debugTAAScale = 0.25f;
+        public static float debugTAAScale = 0.45f;
         public static float debugTAADistScale = 2f;
 
         public int width;
@@ -40,7 +40,7 @@ namespace GPURayTracer
 
         public double scale = -1;
         public int extraRenderPasses = 0;
-        public int maxBounces = 10;
+        public int maxBounces = 20;
         public int targetFPS = 700000;
         public bool forceCPU = false;
         public Point? lastMousePos;

@@ -43,8 +43,8 @@ namespace GPURayTracer.Rendering
             ArrayView<Triangle> triangles, ArrayView<Triangle> triNorms, 
             ArrayView<float> Zbuffer, ArrayView<int> sphereIDBuffer, ArrayView<float> rngData, Camera camera)
         {
-            Vec3 attenuation = new Vec3(1, 1, 1);
-            Vec3 lighting = new Vec3(-1, -1, -1);
+            Vec3 attenuation = new Vec3(1f, 1f, 1f);
+            Vec3 lighting = new Vec3(-1f, -1f, -1f);
             Ray working = ray;
             bool lightingHasValue = false;
             bool attenuationHasValue = false;
@@ -62,7 +62,7 @@ namespace GPURayTracer.Rendering
 
                     Vec3 unit_direction = Vec3.unitVector(working.b);
                     float t = 0.5f * (unit_direction.y + 1.0f);
-                    attenuation *= (1.0f - t) * new Vec3(1.0, 1.0, 1.0) + t * new Vec3(0.5, 0.7, 1.0);
+                    attenuation *= (1.0f - t) * new Vec3(1.0f, 1.0f, 1.0f) + t * new Vec3(0.5f, 0.7f, 1.0f);
                     return new ColorRecord(attenuation, lighting);
                 }
                 else
@@ -74,13 +74,10 @@ namespace GPURayTracer.Rendering
                     }
 
                     //reflection / refraction / diffuse
-                    ScatterRecord sRec = Scatter(working, rec, rngStartIndex + i, rngData, materials);
+                    ScatterRecord sRec = Scatter(working, rec, rngStartIndex + i + 10, rngData, materials);
                     if(sRec.materialID != -1)
                     {
-                        if(sRec.needsLighting)
-                        {
-                            attenuationHasValue = true;
-                        }
+                        attenuationHasValue = sRec.mirrorSkyLightingFix;
                         attenuation *= sRec.attenuation;
                         working = sRec.scatterRay;
                     }
@@ -99,7 +96,7 @@ namespace GPURayTracer.Rendering
                     Vec3 shadowOrig = rec.p;
                     HitRecord shadowRec = GetWorldHit(new Ray(rec.p, lightDir), spheres, triangles, triNorms);
 
-                    if(shadowRec.materialID != -1 && (shadowRec.p - shadowOrig).length() >= lightDist - 0.02f) // the second part of this IF could probably be much more efficent
+                    if(shadowRec.materialID != -1 && (shadowRec.p - shadowOrig).length() >= lightDist - 0.05f) // the second part of this IF could probably be much more efficent
                     {
                         MaterialData material = materials[shadowRec.materialID];
                         if(material.type != 1)
@@ -115,7 +112,6 @@ namespace GPURayTracer.Rendering
                                 lighting *= XMath.Pow(XMath.Max(0.0f, Vec3.dot(-Vec3.reflect(rec.normal, -lightDir), ray.b)), material.reflectivity) * material.emmissiveColor;
                                 lightingHasValue = true;
                             }
-
                         }
                     }
                 }
@@ -127,10 +123,9 @@ namespace GPURayTracer.Rendering
         private static Vec3 RandomUnitVector(int rngStartIndex, ArrayView<float> rngData)
         {
             float a = 2f * XMath.PI * getNext(rngData, rngStartIndex);
-            float z = (getNext(rngData, rngStartIndex) * 2f) - 1;
-            float r = XMath.Sqrt(1 - z * z);
+            float z = (getNext(rngData, rngStartIndex + 1) * 2f) - 1f;
+            float r = XMath.Sqrt(1f - z * z);
             return new Vec3(r * XMath.Cos(a), r * XMath.Sin(a), z);
-            //return Vec3.unitVector(new Vec3(getNext(rngData, rngStartIndex) * 0.25f, getNext(rngData, rngStartIndex + 1) * 0.25f, getNext(rngData, rngStartIndex + 2) * 0.25f));
         }
 
         private static HitRecord GetWorldHit(Ray r, ArrayView<Sphere> spheres, ArrayView<Triangle> triangles, ArrayView<Triangle> normals)
@@ -271,12 +266,12 @@ namespace GPURayTracer.Rendering
                 float reflect_prob;
                 float cosine;
 
-                if(Vec3.dot(r.b, rec.normal) > 0.0f)
+                if(Vec3.dot(r.b, rec.normal) > 0.1f)
                 {
                     outward_normal = -rec.normal;
                     ni_over_nt = material.ref_idx;
                     cosine = Vec3.dot(r.b, rec.normal) / r.b.length();
-                    cosine = XMath.Sqrt(1.0f - material.ref_idx * material.ref_idx * (1 - cosine * cosine));
+                    cosine = XMath.Sqrt(1.0f - material.ref_idx * material.ref_idx * (1f - cosine * cosine));
                 }
                 else
                 {
@@ -288,7 +283,7 @@ namespace GPURayTracer.Rendering
                 //moved the refract code here because I need the if (discriminant > 0) check
                 Vec3 uv = Vec3.unitVector(r.b);
                 float dt = Vec3.dot(uv, outward_normal);
-                float discriminant = 1.0f - ni_over_nt * ni_over_nt * (1 - dt * dt);
+                float discriminant = 1.0f - ni_over_nt * ni_over_nt * (1f - dt * dt);
 
                 if (discriminant > 0)
                 {
@@ -311,7 +306,6 @@ namespace GPURayTracer.Rendering
                 }
 
                 return new ScatterRecord(rec.materialID, ray, material.diffuseColor, true);
-
             }
             else if (material.type == 2) //Metal
             {
@@ -358,14 +352,14 @@ namespace GPURayTracer.Rendering
         public readonly int materialID;
         public readonly Ray scatterRay;
         public readonly Vec3 attenuation;
-        public readonly bool needsLighting;
+        public readonly bool mirrorSkyLightingFix;
 
-        public ScatterRecord(int materialID, Ray scatterRay, Vec3 attenuation, bool needsLighting)
+        public ScatterRecord(int materialID, Ray scatterRay, Vec3 attenuation, bool mirrorSkyLightingFix)
         {
             this.materialID = materialID;
             this.scatterRay = scatterRay;
             this.attenuation = attenuation;
-            this.needsLighting = needsLighting;
+            this.mirrorSkyLightingFix = mirrorSkyLightingFix;
         }
     }
 

@@ -44,9 +44,6 @@ namespace GPURayTracer.Rendering
         public byte[] output;
         FrameManager frame;
 
-        float lightExponent = 0.2f;
-        Vec3 lightIntensity;
-
         public FrameData frameData;
         WorldData worldData;
 
@@ -198,11 +195,6 @@ namespace GPURayTracer.Rendering
                 frameData.rngData, worldData.GetWorldBuffer(), frameData.camera,
                 tick);
 
-            //FilterKernel(frameData.LightingFrameBuffer0.Extent / 3,
-            //    frameData.LightingFrameBuffer0,
-            //    frameData.LightingFrameBuffer1,
-            //    frameData.camera, 3);
-
             if (MainWindow.debugZbuffer)
             {
                 (float min, float max) = Kernels.ReduceMax(device, frameData.framebuffer0.ZBuffer);
@@ -219,36 +211,25 @@ namespace GPURayTracer.Rendering
                     frameData.framebuffer0.LightingFrameBuffer, 
                     frameData.framebuffer0.DrawableIDBuffer);
 
-
                 TAAKernel(frameData.framebuffer0.ColorFrameBuffer.Extent / 3,
                     frameData.framebuffer0.D, frameData.framebuffer1.D,
                     MainWindow.debugTAADistScale, MainWindow.debugTAAScale, tick);
 
-                //FilterKernel(frameData.ColorFrameBuffer1.Extent / 3,
-                //    frameData.ColorFrameBuffer1,
-                //    frameData.finalFrameBuffer,
-                //    frameData.camera, 3);
+                FilterKernel(frameData.framebuffer1.ColorFrameBuffer.Extent / 3,
+                    frameData.framebuffer1.ColorFrameBuffer,
+                    frameData.finalFrameBuffer,
+                    frameData.camera, 2);
 
-                outputKernel(frameData.framebuffer1.ColorFrameBuffer.Extent / 3, frameData.framebuffer1.ColorFrameBuffer, frameData.bitmapData, frameData.camera);
+                outputKernel(frameData.finalFrameBuffer.Extent / 3, frameData.finalFrameBuffer, frameData.bitmapData, frameData.camera);
             }
             else if (MainWindow.debugLighting)
             {
                 FilterKernel(frameData.framebuffer0.LightingFrameBuffer.Extent / 3,
                     frameData.framebuffer0.LightingFrameBuffer,
                     frameData.framebuffer1.LightingFrameBuffer,
-                    frameData.camera, 3);
+                    frameData.camera, 0);
 
-                //(min, max) = Kernels.ReduceMax(device, frameData.LightingFrameBuffer1);
-
-                //normalizeLightingKernel(frameData.LightingFrameBuffer1.Extent / 3, frameData.LightingFrameBuffer1, min, max);
-
-                //FilterKernel(frameData.LightingFrameBuffer0.Extent / 3,
-                //    frameData.LightingFrameBuffer0,
-                //    frameData.LightingFrameBuffer1,
-                //    frameData.camera, 3);
-
-                //outputKernel(frameData.LightingFrameBuffer1.Extent / 3, frameData.LightingFrameBuffer1, frameData.bitmapData, frameData.camera);
-                outputKernel(frameData.framebuffer0.LightingFrameBuffer.Extent / 3, frameData.framebuffer0.LightingFrameBuffer, frameData.bitmapData, frameData.camera);
+                outputKernel(frameData.framebuffer1.LightingFrameBuffer.Extent / 3, frameData.framebuffer0.LightingFrameBuffer, frameData.bitmapData, frameData.camera);
             }
             else
             {
@@ -259,7 +240,6 @@ namespace GPURayTracer.Rendering
                     frameData.framebuffer0.ColorFrameBuffer,
                     frameData.framebuffer0.LightingFrameBuffer,
                     frameData.framebuffer0.DrawableIDBuffer);
-
 
                 outputKernel(frameData.framebuffer0.ColorFrameBuffer.Extent / 3, frameData.framebuffer0.ColorFrameBuffer, frameData.bitmapData, frameData.camera);
             }

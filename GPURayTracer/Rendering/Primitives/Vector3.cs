@@ -160,14 +160,14 @@ namespace GPURayTracer.Rendering
 
         public static Vec3 reflect(Vec3 normal, Vec3 incomming)
         {
-            return unitVector(incomming - normal * 2 * dot(incomming, normal));
+            return unitVector(incomming - normal * 2f * dot(incomming, normal));
         }
 
         public static Vec3 refract(Vec3 v, Vec3 n, float niOverNt)
         {
             Vec3 uv = unitVector(v);
             float dt = dot(uv, n);
-            float discriminant = 1.0f - niOverNt * niOverNt * (1 - dt * dt);
+            float discriminant = 1.0f - niOverNt * niOverNt * (1f - dt * dt);
 
             if (discriminant > 0)
             {
@@ -190,7 +190,7 @@ namespace GPURayTracer.Rendering
             float cosThetaT = XMath.Sqrt(1 - sinThetaTSquared);
             float rPerpendicular = (iorFrom * cosThetaI - iorTo * cosThetaT) / (iorFrom * cosThetaI + iorTo * cosThetaT);
             float rParallel = (iorFrom * cosThetaI - iorTo * cosThetaT) / (iorFrom * cosThetaI + iorTo * cosThetaT);
-            return (rPerpendicular * rPerpendicular + rParallel * rParallel) / 2;
+            return (rPerpendicular * rPerpendicular + rParallel * rParallel) / 2f;
         }
 
         public static Vec3 aces_approx(Vec3 v)
@@ -203,6 +203,11 @@ namespace GPURayTracer.Rendering
             float e = 0.14f;
             Vec3 working = (v * (a * v + b)) / (v * (c * v + d) + e);
             return new Vec3(XMath.Clamp(working.x, 0, 1), XMath.Clamp(working.y, 0, 1), XMath.Clamp(working.z, 0, 1));
+        }
+
+        public static Vec3 reinhard(Vec3 v)
+        {
+            return v / (1.0f + v);
         }
         public static bool Equals(Vec3 a, Vec3 b)
         {
