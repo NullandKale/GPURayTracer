@@ -2,11 +2,13 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 
 namespace GPURayTracer.Rendering
 {
+    [StructLayout(LayoutKind.Sequential, Pack = 0)]
     public struct Vec3
     {
         public static readonly Vec3 xAxis = new Vec3(1, 0, 0);
@@ -36,7 +38,6 @@ namespace GPURayTracer.Rendering
             return "{" + string.Format("{0:0.00}", x) + ", " + string.Format("{0:0.00}", y) + ", " + string.Format("{0:0.00}", z) + "}";
         }
 
-
         public static Vec3 operator -(Vec3 vec)
         {
             return new Vec3(-vec.x, -vec.y, -vec.z);
@@ -44,7 +45,7 @@ namespace GPURayTracer.Rendering
 
         public float length()
         {
-            return XMath.Sqrt(lengthSquared());
+            return XMath.Sqrt(x * x + y * y + z * z);
         }
 
         public float lengthSquared()
@@ -65,6 +66,21 @@ namespace GPURayTracer.Rendering
                 default:
                     return 0;
             }
+        }
+
+        public static Vec3 setX(Vec3 v, float x)
+        {
+            return new Vec3(x, v.y, v.z);
+        }
+
+        public static Vec3 setY(Vec3 v, float y)
+        {
+            return new Vec3(v.x, y, v.z);
+        }
+
+        public static Vec3 setZ(Vec3 v, float z)
+        {
+            return new Vec3(v.x, v.y, z);
         }
 
         public static float dist(Vec3 v1, Vec3 v2)
@@ -97,12 +113,10 @@ namespace GPURayTracer.Rendering
             return new Vec3(v1.x / v2.x, v1.y / v2.y, v1.z / v2.z);
         }
 
-
         public static Vec3 operator *(Vec3 v1, float v)
         {
             return new Vec3(v1.x * v, v1.y * v, v1.z * v);
         }
-
 
         public static Vec3 operator *(float v, Vec3 v1)
         {
@@ -114,24 +128,15 @@ namespace GPURayTracer.Rendering
             return new Vec3(v1.x + v, v1.y + v, v1.z + v);
         }
 
-
         public static Vec3 operator +(float v, Vec3 v1)
         {
             return new Vec3(v1.x + v, v1.y + v, v1.z + v);
         }
 
-
         public static Vec3 operator /(Vec3 v1, float v)
         {
-            float desc = 1.0f / v;
-            return v1 * desc;
+            return v1 * (1.0f / v);
         }
-
-        //public static Vec3 operator /(Vec3 v1, float v)
-        //{
-        //    return new Vec3(v1.x / v, v1.y / v, v1.z / v);
-        //}
-
 
         public static float dot(Vec3 v1, Vec3 v2)
         {
@@ -145,16 +150,9 @@ namespace GPURayTracer.Rendering
                             v1.x * v2.y - v1.y * v2.x);
         }
 
-        public static Vec3 calcLightIntensity (Vec3 v)
-        {
-            float average = (v.x + v.y + v.z) / 3f;
-            return new Vec3(average, average, average);
-        }
-
-
         public static Vec3 unitVector(Vec3 v)
         {
-            return v / v.length();
+            return v / XMath.Sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
         }
 
 

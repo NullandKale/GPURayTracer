@@ -1,16 +1,18 @@
 ﻿using ILGPU.Algorithms;
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace GPURayTracer.Rendering.Primitives
 {
-    public readonly struct Sphere
+    [StructLayout(LayoutKind.Sequential, Pack = 0)]
+    public struct Sphere
     {
-        public readonly Vec3 center;
-        public readonly float radius;
-        public readonly float radiusSquared;
-        public readonly int materialIndex;
+        public Vec3 center;
+        public float radius;
+        public float radiusSquared;
+        public int materialIndex;
 
         public Sphere(Vec3 center, float radius, int materialIndex)
         {

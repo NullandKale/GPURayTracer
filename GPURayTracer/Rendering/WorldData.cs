@@ -53,7 +53,7 @@ namespace GPURayTracer.Rendering
             addSphere(new Sphere(new Vec3(1, 0, -1), 0.5f, addMaterial(MaterialData.makeGlass( new Vec3(0.99f, 0.99f, 0.99f), 2f))));
             addSphere(new Sphere(new Vec3(-1, 0, -1), 0.5f, addMaterial(MaterialData.makeMirror(new Vec3(0.99f, 0.99f, 0.99f), 0f))));
 
-            Random random = new Random();
+            Random random = new Random(5);
 
             for (int i = 0; i < 25; i++)
             {

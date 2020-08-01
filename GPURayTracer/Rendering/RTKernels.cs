@@ -4,6 +4,7 @@ using ILGPU;
 using ILGPU.Algorithms;
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Media.Media3D;
 
@@ -11,22 +12,24 @@ namespace GPURayTracer.Rendering
 {
     public static class RTKernels
     {
-        public static void RenderKernel(Index1 index,
+        public static void RenderKernel(Index2 id,
             dFramebuffer framebuffer,
             ArrayView<float> rngData, 
             WorldBuffer world,
             Camera camera, int rngOffset)
         {
-            int x = ((index) % camera.width);
-            int y = ((index) / camera.width);
+            int x = id.X;
+            int y = id.Y;
+            int index = ((y * camera.width) + x);
+
+            int rngIndex = index + rngOffset + (int)(getNext(rngData, index) * index);
+            Ray ray = camera.GetRay(x, y);
+
+            ColorRecord col = ColorRay(index, rngIndex, ray, world.device_materials, world.device_spheres, world.lightSphereIDs, world.device_triangles, world.device_triNormals, framebuffer.ZBuffer, framebuffer.DrawableIDBuffer, rngData, camera);
 
             int rIndex = index * 3;
             int gIndex = rIndex + 1;
             int bIndex = rIndex + 2;
-
-            int rngIndex = rngOffset + index + (int)(index * getNext(rngData, index) * 2.0f);
-            Ray ray = camera.GetRay(x + getNext(rngData, rngIndex), y + getNext(rngData, rngIndex + 1));
-            ColorRecord col = ColorRay(index, rngIndex + 2, ray, world.device_materials, world.device_spheres, world.lightSphereIDs, world.device_triangles, world.device_triNormals, framebuffer.ZBuffer, framebuffer.DrawableIDBuffer, rngData, camera);
 
             framebuffer.ColorFrameBuffer[rIndex] = col.attenuation.x;
             framebuffer.ColorFrameBuffer[gIndex] = col.attenuation.y;
@@ -44,14 +47,15 @@ namespace GPURayTracer.Rendering
             ArrayView<float> Zbuffer, ArrayView<int> sphereIDBuffer, ArrayView<float> rngData, Camera camera)
         {
             Vec3 attenuation = new Vec3(1f, 1f, 1f);
-            Vec3 lighting = new Vec3(-1f, -1f, -1f);
+            Vec3 lighting = new Vec3();
             Ray working = ray;
-            bool lightingHasValue = false;
             bool attenuationHasValue = false;
+            HitRecord rec;
+            ScatterRecord sRec;
 
             for (int i = 0; i < camera.maxBounces; i++)
             {
-                HitRecord rec = GetWorldHit(working, spheres, triangles, triNorms);
+                rec = GetWorldHit(working, spheres, triangles, triNorms);
 
                 if (rec.materialID == -1)
                 {
@@ -74,7 +78,7 @@ namespace GPURayTracer.Rendering
                     }
 
                     //reflection / refraction / diffuse
-                    ScatterRecord sRec = Scatter(working, rec, rngStartIndex + i + 10, rngData, materials);
+                    sRec = Scatter(working, rec, rngStartIndex + i, rngData, materials);
                     if(sRec.materialID != -1)
                     {
                         attenuationHasValue = sRec.mirrorSkyLightingFix;
@@ -84,7 +88,7 @@ namespace GPURayTracer.Rendering
                     else
                     {
                         sphereIDBuffer[index] = -1;
-                        i = camera.maxBounces;
+                        return new ColorRecord(attenuation, lighting);
                     }
                 }
 
@@ -101,17 +105,8 @@ namespace GPURayTracer.Rendering
                         MaterialData material = materials[shadowRec.materialID];
                         if(material.type != 1)
                         {
-                            if (lightingHasValue)
-                            {
-                                lighting += material.emmissiveColor * XMath.Max(0.0f, Vec3.dot(lightDir, rec.normal));
-                                lighting *= XMath.Pow(XMath.Max(0.0f, Vec3.dot(-Vec3.reflect(rec.normal, -lightDir), ray.b)), material.reflectivity) * material.emmissiveColor;
-                            }
-                            else
-                            {
-                                lighting = material.emmissiveColor * XMath.Max(0.0f, Vec3.dot(lightDir, rec.normal));
-                                lighting *= XMath.Pow(XMath.Max(0.0f, Vec3.dot(-Vec3.reflect(rec.normal, -lightDir), ray.b)), material.reflectivity) * material.emmissiveColor;
-                                lightingHasValue = true;
-                            }
+                            lighting += material.emmissiveColor * XMath.Max(0.0f, Vec3.dot(lightDir, rec.normal));
+                            lighting *= XMath.Pow(XMath.Max(0.0f, Vec3.dot(-Vec3.reflect(rec.normal, -lightDir), ray.b)), material.reflectivity) * material.emmissiveColor;
                         }
                     }
                 }
@@ -148,15 +143,22 @@ namespace GPURayTracer.Rendering
             float closestT = float.MaxValue;
             int sphereIndex = -1;
 
+            Sphere s;
+            Vec3 oc;
+            float a;
+            float b;
+            float c;
+            float discr;
+
             for (int i = 0; i < spheres.Length; i++)
             {
-                Sphere s = spheres[i];
-                Vec3 oc = r.a - s.center;
+                s = spheres[i];
+                oc = r.a - s.center;
 
-                float a = Vec3.dot(r.b, r.b);
-                float b = Vec3.dot(oc, r.b);
-                float c = Vec3.dot(oc, oc) - s.radiusSquared;
-                float discr = (b * b) - (a * c);
+                a = Vec3.dot(r.b, r.b);
+                b = Vec3.dot(oc, r.b);
+                c = Vec3.dot(oc, oc) - s.radiusSquared;
+                discr = (b * b) - (a * c);
 
                 if (discr > 0.01f)
                 {
@@ -179,13 +181,13 @@ namespace GPURayTracer.Rendering
 
             if (sphereIndex != -1)
             {
-                Vec3 p = r.pointAtParameter(closestT);
-                Sphere s = spheres[sphereIndex];
-                return new HitRecord(closestT, p, (p - s.center) / s.radius, r.b, s.materialIndex, sphereIndex);
+                oc = r.pointAtParameter(closestT);
+                s = spheres[sphereIndex];
+                return new HitRecord(closestT, oc, (oc - s.center) / s.radius, r.b, s.materialIndex, sphereIndex);
             }
             else
             {
-                return HitRecord.badHit;
+                return new HitRecord(float.MaxValue, new Vec3(), new Vec3(), false, -1, -1);
             }
         }
 
@@ -196,14 +198,19 @@ namespace GPURayTracer.Rendering
             float Ndet = 0;
             float Nu = 0;
             float Nv = 0;
+            Triangle t;
+            Vec3 tuVec;
+            Vec3 tvVec;
+            Vec3 pVec;
+            float det;
 
             for (int i = 0; i < triangles.Length; i++)
             {
-                Triangle t = triangles[i];
-                Vec3 tuVec = t.uVector();
-                Vec3 tvVec = t.vVector();
-                Vec3 pVec = Vec3.cross(r.b, tvVec);
-                float det = Vec3.dot(tuVec, pVec);
+                t = triangles[i];
+                tuVec = t.uVector();
+                tvVec = t.vVector();
+                pVec = Vec3.cross(r.b, tvVec);
+                det = Vec3.dot(tuVec, pVec);
 
                 if (XMath.Abs(det) > 0.000001f)
                 {
@@ -234,7 +241,7 @@ namespace GPURayTracer.Rendering
 
             if (NcurrentIndex == -1)
             {
-                return HitRecord.badHit;
+                return new HitRecord(float.MaxValue, new Vec3(), new Vec3(), false, -1, -1);
             }
             else
             {
@@ -250,23 +257,22 @@ namespace GPURayTracer.Rendering
         private static ScatterRecord Scatter(Ray r, HitRecord rec, int rngStartIndex, ArrayView<float> rngData, ArrayView<MaterialData> materials)
         {
             MaterialData material = materials[rec.materialID];
+            Ray ray;
+            Vec3 outward_normal;
+            Vec3 refracted;
+            Vec3 reflected;
+            float ni_over_nt;
+            float reflect_prob;
+            float cosine;
 
             if (material.type == 0) //Diffuse
             {
-                Vec3 target = rec.p + rec.normal + RandomUnitVector(rngStartIndex, rngData);
-                return new ScatterRecord(rec.materialID, new Ray(rec.p, target - rec.p), material.diffuseColor, false);
+                refracted = rec.p + rec.normal + RandomUnitVector(rngStartIndex, rngData);
+                return new ScatterRecord(rec.materialID, new Ray(rec.p, refracted - rec.p), material.diffuseColor, false);
             }
             else if (material.type == 1) // dielectric
             {
-                Ray ray;
-                Vec3 outward_normal;
-                Vec3 refracted;
-                Vec3 reflected = Vec3.reflect(rec.normal, r.b);
-                float ni_over_nt;
-                float reflect_prob;
-                float cosine;
-
-                if(Vec3.dot(r.b, rec.normal) > 0.1f)
+                if(Vec3.dot(r.b, rec.normal) > 0f)
                 {
                     outward_normal = -rec.normal;
                     ni_over_nt = material.ref_idx;
@@ -285,14 +291,16 @@ namespace GPURayTracer.Rendering
                 float dt = Vec3.dot(uv, outward_normal);
                 float discriminant = 1.0f - ni_over_nt * ni_over_nt * (1f - dt * dt);
 
-                if (discriminant > 0)
+                reflected = Vec3.reflect(rec.normal, r.b);
+
+                if (discriminant > 0f)
                 {
                     refracted = ni_over_nt * (uv - (outward_normal * dt)) - outward_normal * XMath.Sqrt(discriminant);
                     reflect_prob = schlick(cosine, material.ref_idx);
                 }
                 else
                 {
-                    reflect_prob = 1;
+                    reflect_prob = 1f;
                     refracted = reflected;
                 }
 
@@ -309,26 +317,25 @@ namespace GPURayTracer.Rendering
             }
             else if (material.type == 2) //Metal
             {
-                Vec3 reflected = Vec3.reflect(rec.normal, Vec3.unitVector(r.b));
-                Ray scattered;
+                reflected = Vec3.reflect(rec.normal, Vec3.unitVector(r.b));
                 if (material.ref_idx > 0)
                 {
-                    scattered = new Ray(rec.p, reflected + (material.ref_idx * RandomUnitVector(rngStartIndex, rngData)));
+                    ray = new Ray(rec.p, reflected + (material.ref_idx * RandomUnitVector(rngStartIndex, rngData)));
                 }
                 else
                 {
-                    scattered = new Ray(rec.p, reflected);
+                    ray = new Ray(rec.p, reflected);
                 }
 
-                if ((Vec3.dot(scattered.b, rec.normal) > 0))
+                if ((Vec3.dot(ray.b, rec.normal) > 0))
                 {
-                    return new ScatterRecord(rec.materialID, scattered, material.diffuseColor, true);
+                    return new ScatterRecord(rec.materialID, ray, material.diffuseColor, true);
                 }
             }
             else if (material.type == 3) //Lights
             {
-                Vec3 target = rec.p + rec.normal + RandomUnitVector(rngStartIndex, rngData);
-                return new ScatterRecord(rec.materialID, new Ray(rec.p, target - rec.p), material.emmissiveColor, false);
+                refracted = rec.p + rec.normal + RandomUnitVector(rngStartIndex, rngData);
+                return new ScatterRecord(rec.materialID, new Ray(rec.p, refracted - rec.p), material.emmissiveColor, false);
             }
 
             return new ScatterRecord(-1, r, new Vec3(), true);
@@ -347,12 +354,13 @@ namespace GPURayTracer.Rendering
         }
     }
 
+    [StructLayout(LayoutKind.Sequential, Pack = 0)]
     internal struct ScatterRecord
     {
-        public readonly int materialID;
-        public readonly Ray scatterRay;
-        public readonly Vec3 attenuation;
-        public readonly bool mirrorSkyLightingFix;
+        public int materialID;
+        public Ray scatterRay;
+        public Vec3 attenuation;
+        public bool mirrorSkyLightingFix;
 
         public ScatterRecord(int materialID, Ray scatterRay, Vec3 attenuation, bool mirrorSkyLightingFix)
         {
@@ -363,10 +371,11 @@ namespace GPURayTracer.Rendering
         }
     }
 
+    [StructLayout(LayoutKind.Sequential, Pack = 0)]
     internal struct ColorRecord
     {
-        public readonly Vec3 attenuation;
-        public readonly Vec3 lighting;
+        public Vec3 attenuation;
+        public Vec3 lighting;
 
         public ColorRecord(Vec3 attenuation, Vec3 lighting)
         {

@@ -2,10 +2,12 @@
 using ILGPU.Runtime;
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace GPURayTracer.Rendering.Primitives
 {
+    [StructLayout(LayoutKind.Sequential, Pack = 0)]
     public struct dFramebuffer
     {
         public ArrayView<float> ColorFrameBuffer;

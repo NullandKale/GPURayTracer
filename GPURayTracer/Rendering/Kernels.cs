@@ -22,11 +22,12 @@ namespace GPURayTracer.Rendering
             int x = ((index) % camera.width);
             //int y = ((index) / camera.width);
 
-            int newIndex = ((y * camera.width) + x);
+            int newIndex = ((y * camera.width) + x) * 3;
+            int oldIndexStart = index * 3;
 
-            bitmapData[(newIndex * 3)]     = (byte)(255.99f * data[(index * 3)]);
-            bitmapData[(newIndex * 3) + 1] = (byte)(255.99f * data[(index * 3) + 1]);
-            bitmapData[(newIndex * 3) + 2] = (byte)(255.99f * data[(index * 3) + 2]);
+            bitmapData[newIndex]     = (byte)(255.99f * data[oldIndexStart]);
+            bitmapData[newIndex + 1] = (byte)(255.99f * data[oldIndexStart + 1]);
+            bitmapData[newIndex + 2] = (byte)(255.99f * data[oldIndexStart + 2]);
         }
 
         public static void CreateGrayScaleBitmap(Index1 index, ArrayView<float> data, ArrayView<byte> bitmapData, Camera camera)

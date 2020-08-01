@@ -1,16 +1,18 @@
 ﻿using ILGPU.Algorithms;
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace GPURayTracer.Rendering.Primitives
 {
-    public readonly struct Triangle
+    [StructLayout(LayoutKind.Sequential, Pack=0)]
+    public struct Triangle
     {
-        public readonly Vec3 Vert0;
-        public readonly Vec3 Vert1;
-        public readonly Vec3 Vert2;
-        public readonly int MaterialID;
+        public Vec3 Vert0;
+        public Vec3 Vert1;
+        public Vec3 Vert2;
+        public int MaterialID;
 
         public Triangle(Vec3 vert0, Vec3 vert1, Vec3 vert2, int MaterialID)
         {
@@ -32,7 +34,7 @@ namespace GPURayTracer.Rendering.Primitives
 
         public Vec3 faceNormal()
         {
-            return Vec3.unitVector(Vec3.cross(uVector(), vVector()));
+            return Vec3.unitVector(Vec3.cross(Vert1 - Vert0, Vert2 - Vert0));
         }
     }
 }

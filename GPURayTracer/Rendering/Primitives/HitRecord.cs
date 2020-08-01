@@ -6,8 +6,6 @@ namespace GPURayTracer.Rendering.Primitives
 {
     public readonly struct HitRecord
     {
-        public static readonly HitRecord badHit = new HitRecord(float.MaxValue, new Vec3(), new Vec3(), false, -1, -1);
-
         public readonly float t;
         public readonly bool inside;
         public readonly Vec3 p;

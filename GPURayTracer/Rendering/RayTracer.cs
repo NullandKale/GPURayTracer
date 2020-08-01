@@ -31,7 +31,7 @@ namespace GPURayTracer.Rendering
         public Context context;
         public Accelerator device;
 
-        Action<Index1, dFramebuffer, ArrayView<float>, WorldBuffer, Camera, int> renderKernel;
+        Action<Index2, dFramebuffer, ArrayView<float>, WorldBuffer, Camera, int> renderKernel;
         Action<Index1, dFramebuffer, dFramebuffer, float, float, int> TAAKernel;
         Action<Index1, ArrayView<float>, ArrayView<float>, Camera, int> FilterKernel;
         Action<Index1, ArrayView<float>, float, float> normalizeMapKernel;
@@ -49,6 +49,7 @@ namespace GPURayTracer.Rendering
 
         int targetFPS;
         int tick = 0;
+        Random random;
 
         public UpdateStatsTimer rFPStimer;
         public InputManager inputManager;
@@ -58,6 +59,8 @@ namespace GPURayTracer.Rendering
             context = new Context();
             context.EnableAlgorithms();
             initBestDevice(forceCPU);
+
+            random = new Random();
 
             frameData = new FrameData(device, width, height, extraRenderPasses, maxBounce);
             worldData = new WorldData(device);
@@ -80,7 +83,7 @@ namespace GPURayTracer.Rendering
             outputZbufferKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<byte>, Camera>(Kernels.CreateGrayScaleBitmap);
             TAAKernel = device.LoadAutoGroupedStreamKernel<Index1, dFramebuffer, dFramebuffer, float, float, int>(Kernels.NULLTAA);
             FilterKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<float>, Camera, int>(Kernels.NULLLowPassFilter);
-            renderKernel = device.LoadAutoGroupedStreamKernel<Index1, dFramebuffer, ArrayView<float>, WorldBuffer, Camera, int>(RTKernels.RenderKernel);
+            renderKernel = device.LoadAutoGroupedStreamKernel<Index2, dFramebuffer, ArrayView<float>, WorldBuffer, Camera, int>(RTKernels.RenderKernel);
 
             startRenderThread();
         }
@@ -179,7 +182,6 @@ namespace GPURayTracer.Rendering
             using (var rng = device.Allocate<byte>(512))
             {
                 byte[] bytes = new byte[512];
-                Random random = new Random(0);
                 random.NextBytes(bytes);
                 rng.CopyFrom(bytes, 0, 0, 512);
                 generateKernel(frameData.rngData.Extent, frameData.rngData.Extent / 100, 0.1f, frameData.rngData, rng, 1);
@@ -190,7 +192,7 @@ namespace GPURayTracer.Rendering
 
         public void generateFrame()
         {
-            renderKernel(frameData.framebuffer0.ColorFrameBuffer.Extent / 3, 
+            renderKernel(new Index2(frameData.camera.width, frameData.camera.height), 
                 frameData.framebuffer0.D, 
                 frameData.rngData, worldData.GetWorldBuffer(), frameData.camera,
                 tick);

@@ -4,9 +4,11 @@ using System.Collections.Generic;
 using System.Text;
 using System.Numerics;
 using GPURayTracer.Utils;
+using System.Runtime.InteropServices;
 
 namespace GPURayTracer.Rendering
 {
+    [StructLayout(LayoutKind.Sequential, Pack = 0)]
     public struct Camera
     {
         public int height;
@@ -109,7 +111,7 @@ namespace GPURayTracer.Rendering
 
         public Ray GetRay(float x, float y)
         {
-            return rayFromUnit(2 * (x * reciprocalWidth) - 1, 2 * (y * reciprocalHeight) - 1);
+            return rayFromUnit(2f * (x * reciprocalWidth) - 1f, 2f * (y * reciprocalHeight) - 1f);
         }
 
         public static Camera UpdateMovement(Camera camera, InputManager input)
