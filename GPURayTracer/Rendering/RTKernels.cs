@@ -2,6 +2,7 @@
 using GPURayTracer.Rendering.Primitives;
 using ILGPU;
 using ILGPU.Algorithms;
+using ILGPU.Algorithms.Random;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -13,23 +14,25 @@ namespace GPURayTracer.Rendering
     public static class RTKernels
     {
         public static void RenderKernel(Index2 id,
-            dFramebuffer framebuffer,
-            ArrayView<float> rngData, 
+            dFramebuffer framebuffer, 
             WorldBuffer world,
             Camera camera, int rngOffset)
         {
             int x = id.X;
             int y = id.Y;
+
             int index = ((y * camera.width) + x);
-
-            int rngIndex = index + rngOffset + (int)(getNext(rngData, index) * index);
-            Ray ray = camera.GetRay(x, y);
-
-            ColorRecord col = ColorRay(index, rngIndex, ray, world.device_materials, world.device_spheres, world.lightSphereIDs, world.device_triangles, world.device_triNormals, framebuffer.ZBuffer, framebuffer.DrawableIDBuffer, rngData, camera);
 
             int rIndex = index * 3;
             int gIndex = rIndex + 1;
             int bIndex = rIndex + 2;
+
+            //there is probably a better way to do this, but it seems to work. seed = the tick * a large prime xor index * even larger prime
+            XorShift64Star rng = new XorShift64Star(((ulong)rngOffset * 3727177) ^ ((ulong)index * 113013596393));
+            
+            Ray ray = camera.GetRay(x, y);
+
+            ColorRecord col = ColorRay(index, ray, world.device_materials, world.device_spheres, world.lightSphereIDs, world.device_triangles, world.device_triNormals, framebuffer.ZBuffer, framebuffer.DrawableIDBuffer, rng, camera);
 
             framebuffer.ColorFrameBuffer[rIndex] = col.attenuation.x;
             framebuffer.ColorFrameBuffer[gIndex] = col.attenuation.y;
@@ -40,11 +43,11 @@ namespace GPURayTracer.Rendering
             framebuffer.LightingFrameBuffer[bIndex] = col.lighting.z;
         }
 
-        private static ColorRecord ColorRay(int index, int rngStartIndex, 
+        private static ColorRecord ColorRay(int index, 
             Ray ray, ArrayView<MaterialData> materials, 
             ArrayView<Sphere> spheres, ArrayView<int> lightSphereIDs,
             ArrayView<Triangle> triangles, ArrayView<Triangle> triNorms, 
-            ArrayView<float> Zbuffer, ArrayView<int> sphereIDBuffer, ArrayView<float> rngData, Camera camera)
+            ArrayView<float> Zbuffer, ArrayView<int> sphereIDBuffer, XorShift64Star rng, Camera camera)
         {
             Vec3 attenuation = new Vec3(1f, 1f, 1f);
             Vec3 lighting = new Vec3();
@@ -78,7 +81,7 @@ namespace GPURayTracer.Rendering
                     }
 
                     //reflection / refraction / diffuse
-                    sRec = Scatter(working, rec, rngStartIndex + i, rngData, materials);
+                    sRec = Scatter(working, rec, rng, materials);
                     if(sRec.materialID != -1)
                     {
                         attenuationHasValue = sRec.mirrorSkyLightingFix;
@@ -115,10 +118,10 @@ namespace GPURayTracer.Rendering
             return new ColorRecord(attenuation, lighting);
         }
 
-        private static Vec3 RandomUnitVector(int rngStartIndex, ArrayView<float> rngData)
+        private static Vec3 RandomUnitVector(XorShift64Star rng)
         {
-            float a = 2f * XMath.PI * getNext(rngData, rngStartIndex);
-            float z = (getNext(rngData, rngStartIndex + 1) * 2f) - 1f;
+            float a = 2f * XMath.PI * rng.NextFloat();
+            float z = (rng.NextFloat() * 2f) - 1f;
             float r = XMath.Sqrt(1f - z * z);
             return new Vec3(r * XMath.Cos(a), r * XMath.Sin(a), z);
         }
@@ -149,6 +152,8 @@ namespace GPURayTracer.Rendering
             float b;
             float c;
             float discr;
+            float sqrtdisc;
+            float temp;
 
             for (int i = 0; i < spheres.Length; i++)
             {
@@ -162,8 +167,8 @@ namespace GPURayTracer.Rendering
 
                 if (discr > 0.01f)
                 {
-                    float sqrtdisc = XMath.Sqrt(discr);
-                    float temp = (-b - sqrtdisc) / a;
+                    sqrtdisc = XMath.Sqrt(discr);
+                    temp = (-b - sqrtdisc) / a;
                     if (temp < closestT && temp > 0.01f)
                     {
                         closestT = temp;
@@ -254,7 +259,7 @@ namespace GPURayTracer.Rendering
             }
         }
 
-        private static ScatterRecord Scatter(Ray r, HitRecord rec, int rngStartIndex, ArrayView<float> rngData, ArrayView<MaterialData> materials)
+        private static ScatterRecord Scatter(Ray r, HitRecord rec, XorShift64Star rng, ArrayView<MaterialData> materials)
         {
             MaterialData material = materials[rec.materialID];
             Ray ray;
@@ -267,7 +272,7 @@ namespace GPURayTracer.Rendering
 
             if (material.type == 0) //Diffuse
             {
-                refracted = rec.p + rec.normal + RandomUnitVector(rngStartIndex, rngData);
+                refracted = rec.p + rec.normal + RandomUnitVector(rng);
                 return new ScatterRecord(rec.materialID, new Ray(rec.p, refracted - rec.p), material.diffuseColor, false);
             }
             else if (material.type == 1) // dielectric
@@ -304,7 +309,7 @@ namespace GPURayTracer.Rendering
                     refracted = reflected;
                 }
 
-                if(getNext(rngData, rngStartIndex) < reflect_prob)
+                if(rng.NextFloat() < reflect_prob)
                 {
                     ray = new Ray(rec.p, reflected);
                 }
@@ -320,7 +325,7 @@ namespace GPURayTracer.Rendering
                 reflected = Vec3.reflect(rec.normal, Vec3.unitVector(r.b));
                 if (material.ref_idx > 0)
                 {
-                    ray = new Ray(rec.p, reflected + (material.ref_idx * RandomUnitVector(rngStartIndex, rngData)));
+                    ray = new Ray(rec.p, reflected + (material.ref_idx * RandomUnitVector(rng)));
                 }
                 else
                 {
@@ -334,16 +339,11 @@ namespace GPURayTracer.Rendering
             }
             else if (material.type == 3) //Lights
             {
-                refracted = rec.p + rec.normal + RandomUnitVector(rngStartIndex, rngData);
+                refracted = rec.p + rec.normal + RandomUnitVector(rng);
                 return new ScatterRecord(rec.materialID, new Ray(rec.p, refracted - rec.p), material.emmissiveColor, false);
             }
 
             return new ScatterRecord(-1, r, new Vec3(), true);
-        }
-
-        private static float getNext(ArrayView<float> data, int index)
-        {
-            return data[(index % data.Length)];
         }
 
         private static float schlick(float cosine, float ref_idx)

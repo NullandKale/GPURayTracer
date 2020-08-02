@@ -31,7 +31,7 @@ namespace GPURayTracer.Rendering
         public Context context;
         public Accelerator device;
 
-        Action<Index2, dFramebuffer, ArrayView<float>, WorldBuffer, Camera, int> renderKernel;
+        Action<Index2, dFramebuffer, WorldBuffer, Camera, int> renderKernel;
         Action<Index1, dFramebuffer, dFramebuffer, float, float, int> TAAKernel;
         Action<Index1, ArrayView<float>, ArrayView<float>, Camera, int> FilterKernel;
         Action<Index1, ArrayView<float>, float, float> normalizeMapKernel;
@@ -39,7 +39,6 @@ namespace GPURayTracer.Rendering
         Action<Index1, ArrayView<float>, ArrayView<float>, ArrayView<int>> combineKernel;
         Action<Index1, ArrayView<float>, ArrayView<byte>, Camera> outputKernel;
         Action<Index1, ArrayView<float>, ArrayView<byte>, Camera> outputZbufferKernel;
-        Action<Index1, int, float, ArrayView<float>, ArrayView<byte>, float> generateKernel;
 
         public byte[] output;
         FrameManager frame;
@@ -75,7 +74,6 @@ namespace GPURayTracer.Rendering
 
             rFPStimer = new UpdateStatsTimer();
 
-            generateKernel = device.LoadAutoGroupedStreamKernel<Index1, int, float, ArrayView<float>, ArrayView<byte>, float>(Noise.GenerateKernel);
             normalizeMapKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, float, float>(Kernels.Normalize);
             normalizeLightingKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>>(Kernels.NormalizeLighting);
             combineKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<float>, ArrayView<int>>(Kernels.CombineLightingAndColor);
@@ -83,7 +81,7 @@ namespace GPURayTracer.Rendering
             outputZbufferKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<byte>, Camera>(Kernels.CreateGrayScaleBitmap);
             TAAKernel = device.LoadAutoGroupedStreamKernel<Index1, dFramebuffer, dFramebuffer, float, float, int>(Kernels.NULLTAA);
             FilterKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<float>, Camera, int>(Kernels.NULLLowPassFilter);
-            renderKernel = device.LoadAutoGroupedStreamKernel<Index2, dFramebuffer, ArrayView<float>, WorldBuffer, Camera, int>(RTKernels.RenderKernel);
+            renderKernel = device.LoadAutoGroupedStreamKernel<Index2, dFramebuffer, WorldBuffer, Camera, int>(RTKernels.RenderKernel);
 
             startRenderThread();
         }
@@ -148,11 +146,6 @@ namespace GPURayTracer.Rendering
 
         private void renderThreadMain()
         {
-            if(MainWindow.debugRandomGeneration)
-            {
-                generateRandomness();
-            }
-
             while (run)
             {
                 if (pause)
@@ -177,24 +170,11 @@ namespace GPURayTracer.Rendering
 
         }
 
-        public void generateRandomness()
-        {
-            using (var rng = device.Allocate<byte>(512))
-            {
-                byte[] bytes = new byte[512];
-                random.NextBytes(bytes);
-                rng.CopyFrom(bytes, 0, 0, 512);
-                generateKernel(frameData.rngData.Extent, frameData.rngData.Extent / 100, 0.1f, frameData.rngData, rng, 1);
-                (float min, float max) = Kernels.ReduceMax(device, frameData.rngData);
-                normalizeMapKernel(frameData.rngData.Extent, frameData.rngData, min, max);
-            }
-        }
-
         public void generateFrame()
         {
             renderKernel(new Index2(frameData.camera.width, frameData.camera.height), 
-                frameData.framebuffer0.D, 
-                frameData.rngData, worldData.GetWorldBuffer(), frameData.camera,
+                frameData.framebuffer0.D,
+                worldData.GetWorldBuffer(), frameData.camera,
                 tick);
 
             if (MainWindow.debugZbuffer)
