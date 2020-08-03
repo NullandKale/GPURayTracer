@@ -38,7 +38,7 @@ namespace GPURayTracer
         public int width;
         public int height;
 
-        public double scale = -1;
+        public double scale = -3;
         public int extraRenderPasses = 0;
         public int maxBounces = 10;
         public int targetFPS = 700000;
@@ -117,15 +117,16 @@ namespace GPURayTracer
                 rtRenderer = null;
             }
 
-            try
-            {
-                rtRenderer = new RayTracer(frame, width, height, targetFPS, extraRenderPasses, maxBounces, forceCPU);
-            }
-            catch (Exception e)
-            {
-                FPS.Content = e.ToString();
-                Trace.WriteLine(e.ToString());
-            }
+            rtRenderer = new RayTracer(frame, width, height, targetFPS, extraRenderPasses, maxBounces, forceCPU);
+
+            //try
+            //{
+            //}
+            //catch (Exception e)
+            //{
+            //    FPS.Content = e.ToString();
+            //    Trace.WriteLine(e.ToString());
+            //}
         }
 
         private void MainWindow_Closed(object sender, EventArgs e)

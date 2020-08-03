@@ -29,6 +29,7 @@ namespace GPURayTracer.Rendering
 
             //there is probably a better way to do this, but it seems to work. seed = the tick * a large prime xor index * even larger prime
             XorShift64Star rng = new XorShift64Star(((ulong)rngOffset * 3727177) ^ ((ulong)index * 113013596393));
+           // XorShift64Star rng = new XorShift64Star();
             
             Ray ray = camera.GetRay(x, y);
 
@@ -323,9 +324,9 @@ namespace GPURayTracer.Rendering
             else if (material.type == 2) //Metal
             {
                 reflected = Vec3.reflect(rec.normal, Vec3.unitVector(r.b));
-                if (material.ref_idx > 0)
+                if (material.reflectionConeAngleRadians > 0)
                 {
-                    ray = new Ray(rec.p, reflected + (material.ref_idx * RandomUnitVector(rng)));
+                    ray = new Ray(rec.p, reflected + (material.reflectionConeAngleRadians * RandomUnitVector(rng)));
                 }
                 else
                 {

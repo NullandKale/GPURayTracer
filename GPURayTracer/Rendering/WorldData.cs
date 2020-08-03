@@ -1,4 +1,5 @@
-﻿using GPURayTracer.Rendering.GPUStructs;
+﻿using GPURayTracer.Loaders;
+using GPURayTracer.Rendering.GPUStructs;
 using GPURayTracer.Rendering.Primitives;
 using ILGPU;
 using ILGPU.IR.Types;
@@ -15,19 +16,21 @@ namespace GPURayTracer.Rendering
 
         public List<Sphere> spheres;
         public List<MaterialData> materials;
-        public List<Triangle> triangles;
-        public List<Triangle> triNormals;
+        public List<GPUMesh> meshes;
+
+        private List<Triangle> triangles;
+        private List<Triangle> triNormals;
 
         private bool materialsDirty = true;
         private bool spheresDirty = true;
         private bool trianglesDirty = true;
         private bool triNormalsDirty = true;
 
-        public MemoryBuffer<int> lightSphereIDs;
-        public MemoryBuffer<Sphere> device_spheres;
-        public MemoryBuffer<MaterialData> device_materials;
-        public MemoryBuffer<Triangle> device_triangles;
-        public MemoryBuffer<Triangle> device_triNormals;
+        private MemoryBuffer<int> lightSphereIDs;
+        private MemoryBuffer<Sphere> device_spheres;
+        private MemoryBuffer<MaterialData> device_materials;
+        private MemoryBuffer<Triangle> device_triangles;
+        private MemoryBuffer<Triangle> device_triNormals;
 
         public WorldData(Accelerator device)
         {
@@ -35,32 +38,21 @@ namespace GPURayTracer.Rendering
 
             spheres = new List<Sphere>();
             materials = new List<MaterialData>();
-            triNormals = new List<Triangle>();
+            meshes = new List<GPUMesh>();
             triangles = new List<Triangle>();
+            triNormals = new List<Triangle>();
 
-            int boxMat0 = addMaterial(MaterialData.makeMirror(new Vec3(1, 1, 1), 0));
+            //meshes.Add(MeshLoader.LoadMeshFromFile(device, this, "Assets/defaultcube/defaultcube"));
+            //meshes.Add(MeshLoader.LoadMeshFromFile(device, this, "Assets/cat/cat"));
+            meshes.Add(MeshLoader.LoadMeshFromFile(device, this, "Assets/cornellbox/cornellbox"));
 
-            Vec3 tl = new Vec3(-0.5f, -0.5f, -0.5f);
-            Vec3 tr = new Vec3(0.5f, -0.5f, -0.5f);
-            Vec3 bl = new Vec3(-0.5f, 0.5f, -0.5f);
-            Vec3 br = new Vec3(0.5f, 0.5f, -0.5f);
-
-            addTriangle(new Triangle(tl, tr, bl, boxMat0));
-            addTriangle(new Triangle(tr, bl, br, boxMat0));
-
-            addSphere(new Sphere(new Vec3(0, -1000, 500f), 10f, addMaterial(MaterialData.makeLight(new Vec3(1, 1, 1)))));
-            addSphere(new Sphere(new Vec3(0, 1000.5, -1), 1000, addMaterial(MaterialData.makeDiffuse(new Vec3(0.99f, 0.99f, 0.99f)))));
-            addSphere(new Sphere(new Vec3(1, 0, -1), 0.5f, addMaterial(MaterialData.makeGlass( new Vec3(0.99f, 0.99f, 0.99f), 2f))));
-            addSphere(new Sphere(new Vec3(-1, 0, -1), 0.5f, addMaterial(MaterialData.makeMirror(new Vec3(0.99f, 0.99f, 0.99f), 0f))));
+            addSphere(new Sphere(new Vec3(-0.24, -1.98, 0.16), 0.25f, addMaterial(MaterialData.makeLight(new Vec3(1, 1, 1)))));
+            //addSphere(new Sphere(new Vec3(0, -1000, -500f), 10f, addMaterial(MaterialData.makeLight(new Vec3(1, 1, 1)))));
+            //addSphere(new Sphere(new Vec3(0, 1000.5, -1), 1000, addMaterial(MaterialData.makeDiffuse(new Vec3(0.99f, 0.99f, 0.99f)))));
+            //addSphere(new Sphere(new Vec3(2, 0, -1), 0.5f, addMaterial(MaterialData.makeGlass( new Vec3(0.99f, 0.99f, 0.99f), 2f))));
+            //addSphere(new Sphere(new Vec3(-2, 0, -1), 0.5f, addMaterial(MaterialData.makeMirror(new Vec3(0.99f, 0.99f, 0.99f), 0f))));
 
             Random random = new Random(5);
-
-            for (int i = 0; i < 25; i++)
-            {
-                float size = (float)((random.NextDouble() * 0.25) + 0.25);
-                Vec3 pos = new Vec3((random.NextDouble() * 10) - 5, size / 2, (random.NextDouble() * 10) - 5);
-                addSphere(new Sphere(pos, size, addMaterial(MaterialData.makeDiffuse(new Vec3(random.NextDouble(), random.NextDouble(), random.NextDouble())))));
-            }
         }
 
         public int addMaterial(MaterialData toAdd)

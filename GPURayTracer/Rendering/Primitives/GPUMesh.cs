@@ -1,25 +1,24 @@
 ﻿using ILGPU;
+using ILGPU.Runtime;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace GPURayTracer.Rendering.Primitives
 {
-    public readonly struct GPUMesh
+    public struct GPUMesh
     {
-        public readonly Vec3 position;
-        public readonly int materialID;
-        public readonly int TrianglesOffset;
-        public readonly ArrayView<Triangle> triangles;
-        public readonly ArrayView<Triangle> triNorms;
+        public Vec3 position;
+        public int material;
+        public int triangleStartIndex;
+        public int triangleCount;
 
-        public GPUMesh(Vec3 position, int materialID, int trianglesOffset, ArrayView<Triangle> triangles, ArrayView<Triangle> triNorms)
+        public GPUMesh(Vec3 position, int material, int triangleStartIndex, int triangleCount)
         {
             this.position = position;
-            this.materialID = materialID;
-            TrianglesOffset = trianglesOffset;
-            this.triangles = triangles;
-            this.triNorms = triNorms;
+            this.material = material;
+            this.triangleStartIndex = triangleStartIndex;
+            this.triangleCount = triangleCount;
         }
     }
 }
