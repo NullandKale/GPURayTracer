@@ -38,7 +38,7 @@ namespace GPURayTracer
         public int width;
         public int height;
 
-        public double scale = -3;
+        public double scale = -1;
         public int extraRenderPasses = 0;
         public int maxBounces = 10;
         public int targetFPS = 700000;

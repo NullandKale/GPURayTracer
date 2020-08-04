@@ -25,12 +25,14 @@ namespace GPURayTracer.Rendering
         private bool spheresDirty = true;
         private bool trianglesDirty = true;
         private bool triNormalsDirty = true;
+        private bool meshesDirty = true;
 
         private MemoryBuffer<int> lightSphereIDs;
         private MemoryBuffer<Sphere> device_spheres;
         private MemoryBuffer<MaterialData> device_materials;
         private MemoryBuffer<Triangle> device_triangles;
         private MemoryBuffer<Triangle> device_triNormals;
+        private MemoryBuffer<GPUMesh> device_meshes;
 
         public WorldData(Accelerator device)
         {
@@ -42,17 +44,11 @@ namespace GPURayTracer.Rendering
             triangles = new List<Triangle>();
             triNormals = new List<Triangle>();
 
-            //meshes.Add(MeshLoader.LoadMeshFromFile(device, this, "Assets/defaultcube/defaultcube"));
-            //meshes.Add(MeshLoader.LoadMeshFromFile(device, this, "Assets/cat/cat"));
-            meshes.Add(MeshLoader.LoadMeshFromFile(device, this, "Assets/cornellbox/cornellbox"));
+            //addGPUMesh(MeshLoader.LoadMeshFromFile(device, this, "Assets/defaultcube/defaultcube"));
+            addGPUMesh(MeshLoader.LoadMeshFromFile(device, this, "Assets/cat/cat"));
+            //addGPUMesh(MeshLoader.LoadMeshFromFile(device, this, "Assets/cornellbox/cornellbox"));
 
             addSphere(new Sphere(new Vec3(-0.24, -1.98, 0.16), 0.25f, addMaterial(MaterialData.makeLight(new Vec3(1, 1, 1)))));
-            //addSphere(new Sphere(new Vec3(0, -1000, -500f), 10f, addMaterial(MaterialData.makeLight(new Vec3(1, 1, 1)))));
-            //addSphere(new Sphere(new Vec3(0, 1000.5, -1), 1000, addMaterial(MaterialData.makeDiffuse(new Vec3(0.99f, 0.99f, 0.99f)))));
-            //addSphere(new Sphere(new Vec3(2, 0, -1), 0.5f, addMaterial(MaterialData.makeGlass( new Vec3(0.99f, 0.99f, 0.99f), 2f))));
-            //addSphere(new Sphere(new Vec3(-2, 0, -1), 0.5f, addMaterial(MaterialData.makeMirror(new Vec3(0.99f, 0.99f, 0.99f), 0f))));
-
-            Random random = new Random(5);
         }
 
         public int addMaterial(MaterialData toAdd)
@@ -104,9 +100,23 @@ namespace GPURayTracer.Rendering
             }
         }
 
+        public int addGPUMesh(GPUMesh toAdd)
+        {
+            if(meshes.Contains(toAdd))
+            {
+                return meshes.IndexOf(toAdd);
+            }
+            else
+            {
+                meshesDirty = true;
+                meshes.Add(toAdd);
+                return meshes.Count - 1;
+            }
+        }
+
         public WorldBuffer GetWorldBuffer()
         {
-            return new WorldBuffer(getDeviceLightSphereIDs(), getDeviceSpheres(), getDeviceMaterials(), getDeviceTriangles(), getDeviceTriNormals());
+            return new WorldBuffer(getDeviceLightSphereIDs(), getDeviceSpheres(), getDeviceMaterials(), getDeviceTriangles(), getDeviceMeshes());
         }
 
         private ArrayView<MaterialData> getDeviceMaterials()
@@ -213,6 +223,25 @@ namespace GPURayTracer.Rendering
             }
 
             return device_triNormals;
+        }
+
+        private ArrayView<GPUMesh> getDeviceMeshes()
+        {
+            if(meshesDirty && meshes.Count > 0)
+            {
+                if(device_meshes != null)
+                {
+                    device_meshes.Dispose();
+                    device_meshes = null;
+                }
+
+                var temp = meshes.ToArray();
+                device_meshes = device.Allocate<GPUMesh>(temp.Length);
+                device_meshes.CopyFrom(temp, Index1.Zero, Index1.Zero, device_meshes.Extent);
+                meshesDirty = false;
+            }
+
+            return device_meshes;
         }
 
         private int[] buildSphereLights()

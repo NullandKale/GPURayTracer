@@ -188,9 +188,9 @@ namespace GPURayTracer.Rendering
                 normalizeLightingKernel(frameData.framebuffer0.LightingFrameBuffer.Extent / 3, 
                     frameData.framebuffer0.LightingFrameBuffer);
 
-                combineKernel(frameData.framebuffer0.ColorFrameBuffer.Extent / 3, 
-                    frameData.framebuffer0.ColorFrameBuffer, 
-                    frameData.framebuffer0.LightingFrameBuffer, 
+                combineKernel(frameData.framebuffer0.ColorFrameBuffer.Extent / 3,
+                    frameData.framebuffer0.ColorFrameBuffer,
+                    frameData.framebuffer0.LightingFrameBuffer,
                     frameData.framebuffer0.DrawableIDBuffer);
 
                 TAAKernel(frameData.framebuffer0.ColorFrameBuffer.Extent / 3,

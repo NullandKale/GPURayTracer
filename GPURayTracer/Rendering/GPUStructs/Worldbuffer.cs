@@ -10,18 +10,18 @@ namespace GPURayTracer.Rendering.GPUStructs
     public struct WorldBuffer
     {
         public ArrayView<int> lightSphereIDs;
-        public ArrayView<Sphere> device_spheres;
-        public ArrayView<MaterialData> device_materials;
-        public ArrayView<Triangle> device_triangles;
-        public ArrayView<Triangle> device_triNormals;
+        public ArrayView<Sphere> spheres;
+        public ArrayView<MaterialData> materials;
+        public ArrayView<Triangle> triangles;
+        public ArrayView<GPUMesh> meshes;
 
-        public WorldBuffer(ArrayView<int> lightSphereIDs, ArrayView<Sphere> device_spheres, ArrayView<MaterialData> device_materials, ArrayView<Triangle> device_triangles, ArrayView<Triangle> device_triNormals)
+        public WorldBuffer(ArrayView<int> lightSphereIDs, ArrayView<Sphere> spheres, ArrayView<MaterialData> materials, ArrayView<Triangle> triangles, ArrayView<GPUMesh> meshes)
         {
             this.lightSphereIDs = lightSphereIDs;
-            this.device_spheres = device_spheres;
-            this.device_materials = device_materials;
-            this.device_triangles = device_triangles;
-            this.device_triNormals = device_triNormals;
+            this.spheres = spheres;
+            this.materials = materials;
+            this.triangles = triangles;
+            this.meshes = meshes;
         }
     }
 }

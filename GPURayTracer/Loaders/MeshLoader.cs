@@ -51,14 +51,15 @@ namespace GPURayTracer.Loaders
                                     if(illum == 3)
                                     {
                                         material.reflectivity = ambientColor.length();
-                                        if(material.emmissiveColor.x > 0 || material.emmissiveColor.y > 0 || material.emmissiveColor.z > 0)
-                                        {
-                                            material.type = 3;
-                                        }
-                                        else
-                                        {
-                                            material.type = 0;
-                                        }
+                                    }
+
+                                    if (material.emmissiveColor.x > 0 || material.emmissiveColor.y > 0 || material.emmissiveColor.z > 0)
+                                    {
+                                        material.type = 3;
+                                    }
+                                    else
+                                    {
+                                        material.type = 0;
                                     }
 
                                     materials.Add(materialName, material);
@@ -212,7 +213,16 @@ namespace GPURayTracer.Loaders
                             }
                         case "usemtl":
                             {
-                                mat = worldData.addMaterial(materials.GetValueOrDefault(split[1], MaterialData.makeDiffuse(new Vec3(1, 1, 1))));
+                                if(materials.ContainsKey(split[1]))
+                                {
+                                    MaterialData material = materials[split[1]];
+                                    mat = worldData.addMaterial(material);
+                                }
+                                else
+                                {
+                                    mat = worldData.addMaterial(MaterialData.makeDiffuse(new Vec3(1, 0, 1)));
+                                }
+
                                 break;
                             }
                     }
@@ -222,13 +232,15 @@ namespace GPURayTracer.Loaders
 
 
             int firstTriangle = worldData.addTriangle(triangles[0]);
+            AABB aabb = AABB.CreateFromTriangle(triangles[0].Vert0, triangles[0].Vert1, triangles[0].Vert2);
 
             for(int i = 1; i < triangles.Count; i++)
             {
                 worldData.addTriangle(triangles[i]);
+                aabb = AABB.surrounding_box(aabb, AABB.CreateFromTriangle(triangles[i].Vert0, triangles[i].Vert1, triangles[i].Vert2));
             }
 
-            return new GPUMesh(new Vec3(), mat, firstTriangle, triangles.Count);
+            return new GPUMesh(new Vec3(), firstTriangle, triangles.Count, aabb);
         }
     }
 }
