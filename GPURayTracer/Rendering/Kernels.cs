@@ -64,7 +64,9 @@ namespace GPURayTracer.Rendering
 
             if(data[rIndex] != -1)
             {
+                //Vec3 color = Vec3.reinhard(new Vec3(data[rIndex], data[gIndex], data[bIndex]));
                 Vec3 color = Vec3.aces_approx(new Vec3(data[rIndex], data[gIndex], data[bIndex]));
+
                 data[rIndex] = color.x;
                 data[gIndex] = color.y;
                 data[bIndex] = color.z;
@@ -82,6 +84,8 @@ namespace GPURayTracer.Rendering
             int gIndex = rIndex + 1;
             int bIndex = rIndex + 2;
 
+            float minLight = 0.1f; 
+
             Vec3 col   = new Vec3(color[rIndex], color[gIndex], color[bIndex]);
             Vec3 light = new Vec3(lights[rIndex], lights[gIndex], lights[bIndex]);
 
@@ -93,15 +97,15 @@ namespace GPURayTracer.Rendering
             }
             else if (sphereIDs[index] == -1 || light.x == -1)
             {
-                color[rIndex] = 0;
-                color[gIndex] = 0;
-                color[bIndex] = 0;
+                color[rIndex] = col.x * minLight;
+                color[gIndex] = col.y * minLight;
+                color[bIndex] = col.z * minLight;
             }
             else
             {
-                color[rIndex] = col.x * light.x;
-                color[gIndex] = col.y * light.y;
-                color[bIndex] = col.z * light.z;
+                color[rIndex] = col.x * (light.x < minLight ? minLight : light.x);
+                color[gIndex] = col.y * (light.y < minLight ? minLight : light.y);
+                color[bIndex] = col.z * (light.z < minLight ? minLight : light.z);
             }
         }
         public static (float min, float max) ReduceMax(Accelerator device, ArrayView<float> map)

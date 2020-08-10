@@ -39,9 +39,8 @@ namespace GPURayTracer
         public int height;
 
         public double scale = -1;
-        public int extraRenderPasses = 0;
-        public int maxBounces = 10;
-        public int targetFPS = 700000;
+        public int maxBounces = 5;
+        public int targetFPS = 70000;
         public bool forceCPU = false;
         public Point? lastMousePos;
         public bool mouseDebounce = true;
@@ -117,16 +116,15 @@ namespace GPURayTracer
                 rtRenderer = null;
             }
 
-            rtRenderer = new RayTracer(frame, width, height, targetFPS, extraRenderPasses, maxBounces, forceCPU);
-
-            //try
-            //{
-            //}
-            //catch (Exception e)
-            //{
-            //    FPS.Content = e.ToString();
-            //    Trace.WriteLine(e.ToString());
-            //}
+            try
+            {
+                rtRenderer = new RayTracer(frame, width, height, targetFPS, maxBounces, forceCPU);
+            }
+            catch (Exception e)
+            {
+                FPS.Content = e.ToString();
+                Trace.WriteLine(e.ToString());
+            }
         }
 
         private void MainWindow_Closed(object sender, EventArgs e)
@@ -159,13 +157,12 @@ namespace GPURayTracer
                     displayTimer.endUpdate();
                     displayTimer.startUpdate();
                     FPS.Content = rtRenderer.device.AcceleratorType.ToString() + " "
-                        + (rtRenderer.rFPStimer.averageUpdateRate <= displayTimer.averageUpdateRate
-                        ? ((int)(rtRenderer.rFPStimer.averageUpdateRate) + " FPS GPU LIMITED")
+                        + (rtRenderer.renderThreadTimer.averageUpdateRate <= displayTimer.averageUpdateRate
+                        ? ((int)(rtRenderer.renderThreadTimer.averageUpdateRate) + " FPS GPU LIMITED")
                         : ((int)displayTimer.averageUpdateRate + " FPS WPF LIMITED")) + (debugTAA && !debugZbuffer ? " TAA  ON" : " TAA OFF");
                     camera.Content = string.Format("Pos: {0:0.##}, {1:0.##} {2:0.##}", rtRenderer.frameData.camera.origin.x, rtRenderer.frameData.camera.origin.y, rtRenderer.frameData.camera.origin.z);
                     debug.Content = "[ " + width + ", " + height + " ]" + " SF: " + scale;
                     renderScale.Content = "Scale Factor: " + scale;
-                    samples.Content = "Sample Per Pixel: " + extraRenderPasses;
                     taaLabel.Content = debugTAA && !debugZbuffer ? string.Format("TAA ON # {0:0.##}", debugTAAScale) : "TAA OFF";
                     taaDistLabel.Content = debugTAA && !debugZbuffer ? string.Format("TAA dist {0:0.##}", debugTAADistScale) : "TAA OFF";
 
@@ -265,21 +262,6 @@ namespace GPURayTracer
         {
             scale = -2;
             Window_SizeChanged(sender, null);
-        }
-
-        private void SampleMinus_Click(object sender, RoutedEventArgs e)
-        {
-            extraRenderPasses--;
-        }
-
-        private void SamplePlus_Click(object sender, RoutedEventArgs e)
-        {
-            extraRenderPasses++;
-        }
-
-        private void SampleDef_Click(object sender, RoutedEventArgs e)
-        {
-            extraRenderPasses = 0;
         }
 
         [DllImport("User32.dll")]

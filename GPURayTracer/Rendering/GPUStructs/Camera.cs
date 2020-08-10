@@ -5,16 +5,18 @@ using System.Text;
 using System.Numerics;
 using GPURayTracer.Utils;
 using System.Runtime.InteropServices;
+using ILGPU.Runtime;
+using System.Runtime.CompilerServices;
 
 namespace GPURayTracer.Rendering
 {
     [StructLayout(LayoutKind.Sequential, Pack = 0)]
     public struct Camera
     {
-        public int height;
-        public int width;
-        public int maxBounces;
-        public int extraRenderPasses;
+        public SpecializedValue<int> height;
+        public SpecializedValue<int> width;
+        public SpecializedValue<int> maxBounces;
+
         public float verticalFov;
 
         public Vec3 origin;
@@ -32,7 +34,6 @@ namespace GPURayTracer.Rendering
             this.width = camera.width;
             this.height = camera.height;
             this.maxBounces = camera.maxBounces;
-            this.extraRenderPasses = camera.extraRenderPasses;
 
             Vector4 temp = camera.lookAt - camera.origin;
 
@@ -62,10 +63,10 @@ namespace GPURayTracer.Rendering
 
         public Camera(Camera camera, int width, int height, float verticalFov)
         {
-            this.width = width;
-            this.height = height;
+            this.width = new SpecializedValue<int>(width);
+            this.height = new SpecializedValue<int>(height);
             this.maxBounces = camera.maxBounces;
-            this.extraRenderPasses = camera.extraRenderPasses;
+
             this.verticalFov = verticalFov;
 
             this.origin = camera.origin;
@@ -80,13 +81,12 @@ namespace GPURayTracer.Rendering
             reciprocalWidth = 1.0f / width;
         }
 
-        public Camera(Vec3 origin, Vec3 lookAt, Vec3 up, int width, int height, int maxBounces, int extraRenderPasses, float verticalFov)
+        public Camera(Vec3 origin, Vec3 lookAt, Vec3 up, int width, int height, int maxBounces, float verticalFov)
         {
-            this.width = width;
-            this.height = height;
-            this.maxBounces = maxBounces;
+            this.width = new SpecializedValue<int>(width);
+            this.height = new SpecializedValue<int>(height);
+            this.maxBounces = new SpecializedValue<int>(maxBounces);
             this.verticalFov = verticalFov;
-            this.extraRenderPasses = extraRenderPasses;
             this.origin = origin;
             this.lookAt = lookAt;
             this.up = up;
@@ -99,6 +99,7 @@ namespace GPURayTracer.Rendering
             reciprocalWidth = 1.0f / width;
         }
 
+
         private Ray rayFromUnit(float x, float y)
         {
             Vec3 xContrib = axis.x * -x * aspectRatio;
@@ -108,6 +109,7 @@ namespace GPURayTracer.Rendering
 
             return new Ray(origin, direction);
         }
+
 
         public Ray GetRay(float x, float y)
         {
@@ -173,16 +175,20 @@ namespace GPURayTracer.Rendering
             this.z = z;
         }
 
+
         public Vec3 transform(Vec3 pos)
         {
             return x * pos.x + y * pos.y + z * pos.z;
         }
+
+
         public static OrthoNormalBasis fromXY(Vec3 x, Vec3 y)
         {
             Vec3 zz = Vec3.unitVector(Vec3.cross(x, y));
             Vec3 yy = Vec3.unitVector(Vec3.cross(zz, x));
             return new OrthoNormalBasis(x, yy, zz);
         }
+
 
         public static OrthoNormalBasis fromYX(Vec3 y, Vec3 x)
         {
@@ -191,12 +197,14 @@ namespace GPURayTracer.Rendering
             return new OrthoNormalBasis(xx, y, zz);
         }
 
+
         public static OrthoNormalBasis fromXZ(Vec3 x, Vec3 z)
         {
             Vec3 yy = Vec3.unitVector(Vec3.cross(z, x));
             Vec3 zz = Vec3.unitVector(Vec3.cross(x, yy));
             return new OrthoNormalBasis(x, yy, zz);
         }
+
 
         public static OrthoNormalBasis fromZX(Vec3 z, Vec3 x)
         {
@@ -205,12 +213,14 @@ namespace GPURayTracer.Rendering
             return new OrthoNormalBasis(xx, yy, z);
         }
 
+
         public static OrthoNormalBasis fromYZ(Vec3 y, Vec3 z)
         {
             Vec3 xx = Vec3.unitVector(Vec3.cross(y, z));
             Vec3 zz = Vec3.unitVector(Vec3.cross(xx, y));
             return new OrthoNormalBasis(xx, y, zz);
         }
+
 
         public static OrthoNormalBasis fromZY(Vec3 z, Vec3 y)
         {
@@ -219,16 +229,17 @@ namespace GPURayTracer.Rendering
             return new OrthoNormalBasis(xx, yy, z);
         }
 
+
         public static OrthoNormalBasis fromZ(Vec3 z) 
         {
             Vec3 xx;
-            if (XMath.Abs(Vec3.dot(z, Vec3.xAxis)) > 0.99999f)
+            if (XMath.Abs(Vec3.dot(z, new Vec3(1, 0, 0))) > 0.99999f)
             {
-                xx = Vec3.unitVector(Vec3.cross(Vec3.yAxis, z));
+                xx = Vec3.unitVector(Vec3.cross(new Vec3(0, 1, 0), z));
             }
             else
             {
-                xx = Vec3.unitVector(Vec3.cross(Vec3.xAxis, z));
+                xx = Vec3.unitVector(Vec3.cross(new Vec3(1, 0, 0), z));
             }
             Vec3 yy = Vec3.unitVector(Vec3.cross(z, xx));
             return new OrthoNormalBasis(xx, yy, z);

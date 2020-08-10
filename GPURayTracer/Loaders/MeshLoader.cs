@@ -33,6 +33,7 @@ namespace GPURayTracer.Loaders
             MaterialData material = new MaterialData();
             int illum = 2;
             Vec3 ambientColor = new Vec3();
+            Vec3 emmissiveColor = new Vec3();
             bool materialComplete = false;
 
             for (int i = 0; i < lines.Length; i++)
@@ -53,9 +54,10 @@ namespace GPURayTracer.Loaders
                                         material.reflectivity = ambientColor.length();
                                     }
 
-                                    if (material.emmissiveColor.x > 0 || material.emmissiveColor.y > 0 || material.emmissiveColor.z > 0)
+                                    if (emmissiveColor.x > 0 || emmissiveColor.y > 0 || emmissiveColor.z > 0)
                                     {
                                         material.type = 3;
+                                        material.color = emmissiveColor;
                                     }
                                     else
                                     {
@@ -68,6 +70,7 @@ namespace GPURayTracer.Loaders
                                     material = new MaterialData();
                                     illum = 2;
                                     ambientColor = new Vec3();
+                                    emmissiveColor = new Vec3();
                                 }
 
                                 materialName = split[1];
@@ -77,7 +80,7 @@ namespace GPURayTracer.Loaders
                             {
                                 if(double.TryParse(split[1], out double ns))
                                 {
-                                    material.reflectionConeAngleRadians = (float)(Math.PI * Math.Clamp(1.0 - (ns / 100), 0.0, 1.0));
+                                    material.reflectionConeAngleRadians = (float)(Math.PI * Math.Clamp(1.0 - (ns / 100.0), 0.0, 1.0));
                                 }
                                 break;
                             }
@@ -93,7 +96,7 @@ namespace GPURayTracer.Loaders
                             {
                                 if (double.TryParse(split[1], out double dr) && double.TryParse(split[2], out double dg) && double.TryParse(split[3], out double db))
                                 {
-                                    material.diffuseColor = new Vec3(dr, dg, db);
+                                    material.color = new Vec3(dr, dg, db);
                                 }
                                 break;
                             }
@@ -106,7 +109,7 @@ namespace GPURayTracer.Loaders
                             {
                                 if (double.TryParse(split[1], out double er) && double.TryParse(split[2], out double eg) && double.TryParse(split[3], out double eb))
                                 {
-                                    material.emmissiveColor = new Vec3(er, eg, eb);
+                                    emmissiveColor = new Vec3(er, eg, eb);
                                 }
                                 break;
                             }
@@ -145,9 +148,10 @@ namespace GPURayTracer.Loaders
                     material.reflectivity = ambientColor.length();
                 }
 
-                if (material.emmissiveColor.x > 0 || material.emmissiveColor.y > 0 || material.emmissiveColor.z > 0)
+                if (emmissiveColor.x > 0 || emmissiveColor.y > 0 || emmissiveColor.z > 0)
                 {
                     material.type = 3;
+                    material.color = emmissiveColor;
                 }
                 else
                 {
@@ -160,14 +164,15 @@ namespace GPURayTracer.Loaders
             return materials;
         }
 
-        public static GPUMesh LoadMeshFromFile(Accelerator accelerator, WorldData worldData, string filename)
+        public static hGPUMesh LoadMeshFromFile(Vec3 pos, WorldData worldData, string filename)
         {
             Dictionary<string, MaterialData> materials = LoadMaterialsFromFile(filename + ".mtl");
 
             string[] lines = File.ReadAllLines(filename + ".obj");
 
-            List<Vec3> verticies = new List<Vec3>();
-            List<Triangle> triangles = new List<Triangle>();
+            List<float> verticies = new List<float>();
+            List<int> triangles = new List<int>();
+            List<int> mats = new List<int>();
 
             int mat = 0;
 
@@ -184,7 +189,9 @@ namespace GPURayTracer.Loaders
                             {
                                 if (double.TryParse(split[1], out double v0) && double.TryParse(split[2], out double v1) && double.TryParse(split[3], out double v2))
                                 {
-                                    verticies.Add(new Vec3(v0, -v1, v2));
+                                    verticies.Add((float)v0);
+                                    verticies.Add((float)-v1);
+                                    verticies.Add((float)v2);
                                 }
                                 break;
                             }
@@ -206,7 +213,10 @@ namespace GPURayTracer.Loaders
 
                                 for(int j = 1; j < indexes.Count - 1; ++j)
                                 {
-                                    triangles.Add(new Triangle(verticies[indexes[0]], verticies[indexes[j]], verticies[indexes[j + 1]], mat));
+                                    triangles.Add(indexes[0]);
+                                    triangles.Add(indexes[j]);
+                                    triangles.Add(indexes[j+1]);
+                                    mats.Add(mat);
                                 }
 
                                 break;
@@ -216,11 +226,11 @@ namespace GPURayTracer.Loaders
                                 if(materials.ContainsKey(split[1]))
                                 {
                                     MaterialData material = materials[split[1]];
-                                    mat = worldData.addMaterial(material);
+                                    mat = worldData.worldBuffer.addMaterial(material);
                                 }
                                 else
                                 {
-                                    mat = worldData.addMaterial(MaterialData.makeDiffuse(new Vec3(1, 0, 1)));
+                                    mat = worldData.worldBuffer.addMaterial(MaterialData.makeDiffuse(new Vec3(1, 0, 1)));
                                 }
 
                                 break;
@@ -230,17 +240,7 @@ namespace GPURayTracer.Loaders
                 }
             }
 
-
-            int firstTriangle = worldData.addTriangle(triangles[0]);
-            AABB aabb = AABB.CreateFromTriangle(triangles[0].Vert0, triangles[0].Vert1, triangles[0].Vert2);
-
-            for(int i = 1; i < triangles.Count; i++)
-            {
-                worldData.addTriangle(triangles[i]);
-                aabb = AABB.surrounding_box(aabb, AABB.CreateFromTriangle(triangles[i].Vert0, triangles[i].Vert1, triangles[i].Vert2));
-            }
-
-            return new GPUMesh(new Vec3(), firstTriangle, triangles.Count, aabb);
+            return new hGPUMesh(pos, verticies, triangles, mats);
         }
     }
 }

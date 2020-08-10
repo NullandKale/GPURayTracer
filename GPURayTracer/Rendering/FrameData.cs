@@ -18,15 +18,15 @@ namespace GPURayTracer.Rendering
 
         public MemoryBuffer<float> finalFrameBuffer;
         public MemoryBuffer<byte> bitmapData;
-        public FrameData(Accelerator device, int width, int height, int extraRenderPasses, int maxBounces)
+        public FrameData(Accelerator device, int width, int height, int maxBounces)
         {
             this.device = device;
-            changeSize(width, height, extraRenderPasses, maxBounces);
+            changeSize(width, height, maxBounces);
         }
 
-        public void changeSize(int width, int height, int extraRenderPasses, int maxBounces)
+        public void changeSize(int width, int height, int maxBounces)
         {
-            camera = new Camera(new Vec3(0, 0, -4), new Vec3(0,0,0), Vec3.unitVector(new Vec3(0, 1, 0)), width, height, maxBounces, extraRenderPasses, 40f);
+            camera = new Camera(new Vec3(0, -65, -5), new Vec3(0,-65,-4), Vec3.unitVector(new Vec3(0, 1, 0)), width, height, maxBounces, 40f);
             
             finalFrameBuffer = device.Allocate<float>(width * height * 3);
 

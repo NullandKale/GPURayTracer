@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace GPURayTracer.Rendering
@@ -12,8 +13,9 @@ namespace GPURayTracer.Rendering
         public Ray(Vec3 a, Vec3 b)
         {
             this.a = a;
-            this.b = b;
+            this.b = Vec3.unitVector(b);
         }
+
 
         public Vec3 pointAtParameter(float t)
         {

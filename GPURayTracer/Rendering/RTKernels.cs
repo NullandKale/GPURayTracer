@@ -5,6 +5,7 @@ using ILGPU.Algorithms;
 using ILGPU.Algorithms.Random;
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Media.Media3D;
@@ -15,7 +16,7 @@ namespace GPURayTracer.Rendering
     {
         public static void RenderKernel(Index2 id,
             dFramebuffer framebuffer,
-            WorldBuffer world,
+            dWorldBuffer world,
             Camera camera, int rngOffset)
         {
             int x = id.X;
@@ -24,30 +25,30 @@ namespace GPURayTracer.Rendering
             int index = ((y * camera.width) + x);
 
             //there is probably a better way to do this, but it seems to work. seed = the tick * a large prime xor (index + 1) * even larger prime
-            XorShift64Star rng = new XorShift64Star(((ulong)rngOffset * 3727177) ^ ((ulong)(index + 1) * 113013596393));
-            // XorShift64Star rng = new XorShift64Star();
+            XorShift64Star rng = new XorShift64Star((((ulong)(rngOffset + 1) * 3727177) ^ ((ulong)(index + 1) * 113013596393)));
+            //XorShift64Star rng = new XorShift64Star();
 
-            Ray ray = camera.GetRay(x, y);
+            Ray ray = camera.GetRay(x + rng.NextFloat(), y + rng.NextFloat());
 
             ColorRay(index, ray, framebuffer, world, rng, camera);
         }
 
+
         private static void ColorRay(int index,
             Ray ray,
             dFramebuffer framebuffer,
-            WorldBuffer world,
+            dWorldBuffer world,
             XorShift64Star rng, Camera camera)
         {
             Vec3 attenuation = new Vec3(1f, 1f, 1f);
             Vec3 lighting = new Vec3();
+
             Ray working = ray;
             bool attenuationHasValue = false;
-            HitRecord rec;
-            ScatterRecord sRec;
 
             for (int i = 0; i < camera.maxBounces; i++)
             {
-                rec = GetWorldHit(working, world);
+                HitRecord rec = GetWorldHit(working, world);
 
                 if (rec.materialID == -1)
                 {
@@ -56,8 +57,7 @@ namespace GPURayTracer.Rendering
                         framebuffer.DrawableIDBuffer[index] = -2;
                     }
 
-                    Vec3 unit_direction = Vec3.unitVector(working.b);
-                    float t = 0.5f * (unit_direction.y + 1.0f);
+                    float t = 0.5f * (working.b.y + 1.0f);
                     attenuation *= (1.0f - t) * new Vec3(1.0f, 1.0f, 1.0f) + t * new Vec3(0.5f, 0.7f, 1.0f);
                     break;
                 }
@@ -69,8 +69,7 @@ namespace GPURayTracer.Rendering
                         framebuffer.DrawableIDBuffer[index] = rec.drawableID;
                     }
 
-                    //reflection / refraction / diffuse
-                    sRec = Scatter(working, rec, rng, world.materials);
+                    ScatterRecord sRec = Scatter(working, rec, rng, world.materials);
                     if (sRec.materialID != -1)
                     {
                         attenuationHasValue = sRec.mirrorSkyLightingFix;
@@ -87,23 +86,23 @@ namespace GPURayTracer.Rendering
                 for (int j = 0; j < world.lightSphereIDs.Length; j++)
                 {
                     Sphere s = world.spheres[world.lightSphereIDs[j]];
-                    Vec3 lightDir = Vec3.unitVector(s.center - rec.p);
+                    Vec3 lightDir = s.center - rec.p;
                     float lightDist = (s.center - rec.p).length() - s.radius;
                     Vec3 shadowOrig = rec.p;
                     HitRecord shadowRec = GetWorldHit(new Ray(rec.p, lightDir), world);
 
-                    if (shadowRec.materialID != -1 && (shadowRec.p - shadowOrig).length() >= lightDist - 0.05f) // the second part of this IF could probably be much more efficent
+                    if (shadowRec.materialID != -1 && (shadowRec.p - shadowOrig).length() >= lightDist - 0.1f) // the second part of this IF could probably be much more efficent
                     {
                         MaterialData material = world.materials[shadowRec.materialID];
                         if (material.type != 1)
                         {
-                            lighting += material.emmissiveColor * XMath.Max(0.0f, Vec3.dot(lightDir, rec.normal));
-                            lighting *= XMath.Pow(XMath.Max(0.0f, Vec3.dot(-Vec3.reflect(rec.normal, -lightDir), ray.b)), material.reflectivity) * material.emmissiveColor;
+                            lightDir = Vec3.unitVector(lightDir);
+                            lighting += material.color * XMath.Max(0.0f, Vec3.dot(lightDir, rec.normal));
+                            lighting *= XMath.Pow(XMath.Max(0.0f, Vec3.dot(-Vec3.reflect(rec.normal, -lightDir), ray.b)), material.reflectivity) * material.color;
                         }
                     }
                 }
             }
-
 
             int rIndex = index * 3;
             int gIndex = rIndex + 1;
@@ -118,6 +117,7 @@ namespace GPURayTracer.Rendering
             framebuffer.LightingFrameBuffer[bIndex] = lighting.z;
         }
 
+
         private static Vec3 RandomUnitVector(XorShift64Star rng)
         {
             float a = 2f * XMath.PI * rng.NextFloat();
@@ -126,60 +126,62 @@ namespace GPURayTracer.Rendering
             return new Vec3(r * XMath.Cos(a), r * XMath.Sin(a), z);
         }
 
-        private static HitRecord GetWorldHit(Ray r, WorldBuffer world)
+
+        private static HitRecord GetWorldHit(Ray r, dWorldBuffer world)
         {
             HitRecord rec = GetSphereHit(r, world.spheres);
-            HitRecord triRec = GetMeshHit(r, world, rec.t);
+            HitRecord vRec = world.VoxelChunk.hit(r, 0, rec.t);
+            HitRecord triRec = GetMeshHit(r, world, vRec.t);
 
-            if (rec.materialID == -1 || triRec.materialID != -1)
-            {
-                return triRec;
-            }
-            else
+            if (rec.t < vRec.t && rec.t < triRec.t)
             {
                 return rec;
             }
+            else if (vRec.t < rec.t && vRec.t < triRec.t)
+            {
+                return vRec;
+            }
+            else
+            {
+                return triRec;
+            }
         }
+
 
         private static HitRecord GetSphereHit(Ray r, ArrayView<Sphere> spheres)
         {
-            float closestT = float.MaxValue;
+            float closestT = 10000;
             int sphereIndex = -1;
 
             Sphere s;
             Vec3 oc;
-            float a;
-            float b;
-            float c;
-            float discr;
-            float sqrtdisc;
-            float temp;
 
             for (int i = 0; i < spheres.Length; i++)
             {
                 s = spheres[i];
                 oc = r.a - s.center;
 
-                a = Vec3.dot(r.b, r.b);
-                b = Vec3.dot(oc, r.b);
-                c = Vec3.dot(oc, oc) - s.radiusSquared;
-                discr = (b * b) - (a * c);
+                float b = Vec3.dot(oc, r.b);
+                float c = Vec3.dot(oc, oc) - s.radiusSquared;
+                float discr = (b * b) - (c);
 
                 if (discr > 0.01f)
                 {
-                    sqrtdisc = XMath.Sqrt(discr);
-                    temp = (-b - sqrtdisc) / a;
+                    float sqrtdisc = XMath.Sqrt(discr);
+                    float temp = (-b - sqrtdisc);
                     if (temp < closestT && temp > 0.01f)
                     {
                         closestT = temp;
                         sphereIndex = i;
-                        continue;
                     }
-                    temp = (-b + sqrtdisc) / a;
-                    if (temp < closestT && temp > 0.01f)
+                    else
                     {
-                        closestT = temp;
-                        sphereIndex = i;
+                        temp = (-b + sqrtdisc);
+                        if (temp < closestT && temp > 0.01f)
+                        {
+                            closestT = temp;
+                            sphereIndex = i;
+                        }
                     }
                 }
             }
@@ -196,7 +198,8 @@ namespace GPURayTracer.Rendering
             }
         }
 
-        private static HitRecord GetMeshHit(Ray r, WorldBuffer world, float nearerThan)
+
+        private static HitRecord GetMeshHit(Ray r, dWorldBuffer world, float nearerThan)
         {
             float dist = nearerThan;
             HitRecord rec = new HitRecord(float.MaxValue, new Vec3(), new Vec3(), false, -1, -1);
@@ -205,9 +208,10 @@ namespace GPURayTracer.Rendering
             {
                 if (world.meshes[i].aabb.hit(r, 0, dist))
                 {
-                    HitRecord meshHit = GetTriangleHit(r, world.triangles, world.meshes[i].triangleStartIndex, world.meshes[i].triangleStartIndex + world.meshes[i].triangleCount, dist);
+                    HitRecord meshHit = GetTriangleHit(r, world, world.meshes[i], dist);
                     if(meshHit.t < dist)
                     {
+                        dist = meshHit.t;
                         rec = meshHit;
                     }
                 }
@@ -216,56 +220,40 @@ namespace GPURayTracer.Rendering
             return rec;
         }
 
-        private static HitRecord GetTriangleHit(Ray r, ArrayView<Triangle> triangles, int startIndex, int endIndex, float nearerThan)
+
+        private static HitRecord GetTriangleHit(Ray r, dWorldBuffer world, dGPUMesh mesh, float nearerThan)
         {
+            Triangle t = new Triangle();
             float currentNearestDist = nearerThan;
             int NcurrentIndex = -1;
+            int material = 0;
             float Ndet = 0;
-            float Nu = 0;
-            float Nv = 0;
-            Triangle t;
-            Vec3 tuVec;
-            Vec3 tvVec;
-            Vec3 pVec;
-            float det;
-            float temp;
 
-            float invDet;
-            Vec3 tVec;
-            float u;
-            Vec3 qVec;
-            float v;
-
-            for (int i = startIndex; i < endIndex; i++)
+            for (int i = 0; i < mesh.triangleCount; i++)
             {
-                t = triangles[i];
-                tuVec = t.uVector();
-                tvVec = t.vVector();
-                pVec = Vec3.cross(r.b, tvVec);
-                det = Vec3.dot(tuVec, pVec);
+                t = mesh.GetTriangle(i, world);
+                Vec3 tuVec = t.uVector();
+                Vec3 tvVec = t.vVector();
+                Vec3 pVec = Vec3.cross(r.b, tvVec);
+                float det = Vec3.dot(tuVec, pVec);
 
-                if (XMath.Abs(det) > 0)
+                if (XMath.Abs(det) > 0.0001f)
                 {
-                    invDet = 1.0f / det;
-                    tVec = r.a - t.Vert0;
-                    u = Vec3.dot(tVec, pVec) * invDet;
-                    qVec = Vec3.cross(tVec, tuVec);
-                    v = Vec3.dot(r.b, qVec) * invDet;
+                    float invDet = 1.0f / det;
+                    Vec3 tVec = r.a - t.Vert0;
+                    float u = Vec3.dot(tVec, pVec) * invDet;
+                    Vec3 qVec = Vec3.cross(tVec, tuVec);
+                    float v = Vec3.dot(r.b, qVec) * invDet;
 
-                    if (u < 0 || u > 1.0f || v < 0 || u + v > 1.0f)
+                    if (u > 0 && u <= 1.0f && v > 0 && u + v <= 1.0f)
                     {
-                        continue;
-                    }
-                    else
-                    {
-                        temp = Vec3.dot(tvVec, qVec) * invDet;
-                        if (temp > 0 && temp < currentNearestDist)
+                        float temp = Vec3.dot(tvVec, qVec) * invDet;
+                        if (temp > 0.001f && temp < currentNearestDist)
                         {
                             currentNearestDist = temp;
                             NcurrentIndex = i;
                             Ndet = det;
-                            Nu = u;
-                            Nv = v;
+                            material = t.MaterialID;
                         }
                     }
                 }
@@ -277,15 +265,17 @@ namespace GPURayTracer.Rendering
             }
             else
             {
-                Vec3 faceNormal = triangles[NcurrentIndex].faceNormal();
-                Triangle tn = new Triangle(faceNormal, faceNormal, faceNormal, 0);
-                Vec3 uNorm = tn.uVector();
-                Vec3 vNorm = tn.vVector();
-                Vec3 normal = Vec3.unitVector((Nu * uNorm) + (Nv * vNorm) + tn.Vert0);
-                bool backfacing = Ndet < 0.00001f;
-                return new HitRecord(currentNearestDist, r.pointAtParameter(currentNearestDist), backfacing ? -normal : normal, backfacing, tn.MaterialID, NcurrentIndex);
+                if (Ndet < 0)
+                {
+                    return new HitRecord(currentNearestDist, r.pointAtParameter(currentNearestDist), -t.faceNormal(), true, material, NcurrentIndex);
+                }
+                else
+                {
+                    return new HitRecord(currentNearestDist, r.pointAtParameter(currentNearestDist), t.faceNormal(), false, material, NcurrentIndex);
+                }
             }
         }
+
 
         private static ScatterRecord Scatter(Ray r, HitRecord rec, XorShift64Star rng, ArrayView<MaterialData> materials)
         {
@@ -300,51 +290,50 @@ namespace GPURayTracer.Rendering
             if (material.type == 0) //Diffuse
             {
                 refracted = rec.p + rec.normal + RandomUnitVector(rng);
-                return new ScatterRecord(rec.materialID, new Ray(rec.p, refracted - rec.p), material.diffuseColor, false);
+                return new ScatterRecord(rec.materialID, new Ray(rec.p, refracted - rec.p), material.color, false);
             }
             else if (material.type == 1) // dielectric
             {
-                if (Vec3.dot(r.b, rec.normal) > 0f)
+                if (Vec3.dot(r.b, rec.normal) > 0.01f)
                 {
                     outward_normal = -rec.normal;
                     ni_over_nt = material.ref_idx;
-                    cosine = Vec3.dot(r.b, rec.normal) / r.b.length();
+                    cosine = Vec3.dot(r.b, rec.normal);
                     cosine = XMath.Sqrt(1.0f - material.ref_idx * material.ref_idx * (1f - cosine * cosine));
                 }
                 else
                 {
                     outward_normal = rec.normal;
                     ni_over_nt = 1.0f / material.ref_idx;
-                    cosine = -Vec3.dot(r.b, rec.normal) / r.b.length();
+                    cosine = -Vec3.dot(r.b, rec.normal);
                 }
 
                 //moved the refract code here because I need the if (discriminant > 0) check
-                Vec3 uv = Vec3.unitVector(r.b);
-                float dt = Vec3.dot(uv, outward_normal);
+                float dt = Vec3.dot(r.b, outward_normal);
                 float discriminant = 1.0f - ni_over_nt * ni_over_nt * (1f - dt * dt);
 
-                if (discriminant > 0f)
+                if (discriminant > 0.001f)
                 {
 
                     if (rng.NextFloat() < schlick(cosine, material.ref_idx))
                     {
-                        return new ScatterRecord(rec.materialID, new Ray(rec.p, Vec3.reflect(rec.normal, r.b)), material.diffuseColor, true);
+                        return new ScatterRecord(rec.materialID, new Ray(rec.p, Vec3.reflect(rec.normal, r.b)), material.color, true);
                     }
                     else
                     {
-                        return new ScatterRecord(rec.materialID, new Ray(rec.p, ni_over_nt * (uv - (outward_normal * dt)) - outward_normal * XMath.Sqrt(discriminant)), material.diffuseColor, true);
+                        return new ScatterRecord(rec.materialID, new Ray(rec.p, ni_over_nt * (r.b - (outward_normal * dt)) - outward_normal * XMath.Sqrt(discriminant)), material.color, true);
                     }
                 }
                 else
                 {
-                    return new ScatterRecord(rec.materialID, new Ray(rec.p, Vec3.reflect(rec.normal, r.b)), material.diffuseColor, true);
+                    return new ScatterRecord(rec.materialID, new Ray(rec.p, Vec3.reflect(rec.normal, r.b)), material.color, true);
                 }
 
             }
             else if (material.type == 2) //Metal
             {
-                reflected = Vec3.reflect(rec.normal, Vec3.unitVector(r.b));
-                if (material.reflectionConeAngleRadians > 0)
+                reflected = Vec3.reflect(rec.normal, r.b);
+                if (material.reflectionConeAngleRadians > 0.001f)
                 {
                     ray = new Ray(rec.p, reflected + (material.reflectionConeAngleRadians * RandomUnitVector(rng)));
                 }
@@ -353,15 +342,15 @@ namespace GPURayTracer.Rendering
                     ray = new Ray(rec.p, reflected);
                 }
 
-                if ((Vec3.dot(ray.b, rec.normal) > 0))
+                if ((Vec3.dot(ray.b, rec.normal) > 0.001f))
                 {
-                    return new ScatterRecord(rec.materialID, ray, material.diffuseColor, true);
+                    return new ScatterRecord(rec.materialID, ray, material.color, true);
                 }
             }
             else if (material.type == 3) //Lights
             {
                 refracted = rec.p + rec.normal + RandomUnitVector(rng);
-                return new ScatterRecord(rec.materialID, new Ray(rec.p, refracted - rec.p), material.emmissiveColor, false);
+                return new ScatterRecord(rec.materialID, new Ray(rec.p, refracted - rec.p), material.color, false);
             }
 
             return new ScatterRecord(-1, r, new Vec3(), true);
@@ -375,7 +364,6 @@ namespace GPURayTracer.Rendering
         }
     }
 
-    [StructLayout(LayoutKind.Sequential, Pack = 0)]
     internal struct ScatterRecord
     {
         public int materialID;

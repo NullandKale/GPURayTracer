@@ -2,20 +2,10 @@
 using GPURayTracer.Rendering.Primitives;
 using GPURayTracer.Utils;
 using ILGPU;
-using ILGPU.Algorithms;
-using ILGPU.Algorithms.Random;
-using ILGPU.IR.Types;
 using ILGPU.Runtime;
 using ILGPU.Runtime.CPU;
 using ILGPU.Runtime.Cuda;
-using ILGPU.Runtime.OpenCL;
-using Simplex;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Drawing;
-using System.Linq;
-using System.Text;
 using System.Threading;
 
 namespace GPURayTracer.Rendering
@@ -24,14 +14,15 @@ namespace GPURayTracer.Rendering
     {
         public bool run = true;
         public bool pause = false;
-        public bool ready = false;
+        public bool renderThreadLock = false;
+        public UpdateStatsTimer renderThreadTimer;
 
         private Thread RenderThread;
 
         public Context context;
         public Accelerator device;
 
-        Action<Index2, dFramebuffer, WorldBuffer, Camera, int> renderKernel;
+        Action<Index2, dFramebuffer, dWorldBuffer, Camera, int> renderKernel;
         Action<Index1, dFramebuffer, dFramebuffer, float, float, int> TAAKernel;
         Action<Index1, ArrayView<float>, ArrayView<float>, Camera, int> FilterKernel;
         Action<Index1, ArrayView<float>, float, float> normalizeMapKernel;
@@ -48,20 +39,17 @@ namespace GPURayTracer.Rendering
 
         int targetFPS;
         int tick = 0;
-        Random random;
 
-        public UpdateStatsTimer rFPStimer;
         public InputManager inputManager;
 
-        public RayTracer(FrameManager frameManager, int width, int height, int targetFPS, int extraRenderPasses, int maxBounce, bool forceCPU)
+        public RayTracer(FrameManager frameManager, int width, int height, int targetFPS, int maxBounce, bool forceCPU)
         {
-            context = new Context();
+            //ContextFlags improve performance and are ordered by speedup
+            context = new Context(ContextFlags.AggressiveInlining | ContextFlags.FastMath | ContextFlags.Force32BitFloats);
             context.EnableAlgorithms();
             initBestDevice(forceCPU);
 
-            random = new Random();
-
-            frameData = new FrameData(device, width, height, extraRenderPasses, maxBounce);
+            frameData = new FrameData(device, width, height, maxBounce);
             worldData = new WorldData(device);
             inputManager = new InputManager();
 
@@ -72,7 +60,7 @@ namespace GPURayTracer.Rendering
 
             output = new byte[width * height * 3];
 
-            rFPStimer = new UpdateStatsTimer();
+            renderThreadTimer = new UpdateStatsTimer();
 
             normalizeMapKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, float, float>(Kernels.Normalize);
             normalizeLightingKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>>(Kernels.NormalizeLighting);
@@ -81,7 +69,7 @@ namespace GPURayTracer.Rendering
             outputZbufferKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<byte>, Camera>(Kernels.CreateGrayScaleBitmap);
             TAAKernel = device.LoadAutoGroupedStreamKernel<Index1, dFramebuffer, dFramebuffer, float, float, int>(Kernels.NULLTAA);
             FilterKernel = device.LoadAutoGroupedStreamKernel<Index1, ArrayView<float>, ArrayView<float>, Camera, int>(Kernels.NULLLowPassFilter);
-            renderKernel = device.LoadAutoGroupedStreamKernel<Index2, dFramebuffer, WorldBuffer, Camera, int>(RTKernels.RenderKernel);
+            renderKernel = device.LoadAutoGroupedStreamKernel<Index2, dFramebuffer, dWorldBuffer, Camera, int>(RTKernels.RenderKernel);
 
             startRenderThread();
         }
@@ -118,11 +106,11 @@ namespace GPURayTracer.Rendering
             RenderThread.IsBackground = true;
             RenderThread.Start();
         }
-        public void waitForReady()
+        public void waitForRenderThreadLock(int msToWait)
         {
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < msToWait; i++)
             {
-                if (ready)
+                if (renderThreadLock)
                 {
                     return;
                 }
@@ -150,12 +138,12 @@ namespace GPURayTracer.Rendering
             {
                 if (pause)
                 {
-                    ready = true;
+                    renderThreadLock = true;
                 }
                 else
                 {
-                    ready = false;
-                    rFPStimer.startUpdate();
+                    renderThreadLock = false;
+                    renderThreadTimer.startUpdate();
 
                     generateFrame();
                     inputManager.Update();
@@ -163,8 +151,8 @@ namespace GPURayTracer.Rendering
 
                     frame.write(ref output);
 
-                    rFPStimer.endUpdateForTargetUpdateTime((1000.0 / targetFPS), true);
-                    ready = true;
+                    renderThreadLock = true;
+                    renderThreadTimer.endUpdateForTargetUpdateTime((1000.0 / targetFPS), true);
                 }
             }
 
@@ -174,7 +162,7 @@ namespace GPURayTracer.Rendering
         {
             renderKernel(new Index2(frameData.camera.width, frameData.camera.height), 
                 frameData.framebuffer0.D,
-                worldData.GetWorldBuffer(), frameData.camera,
+                worldData.getDeviceWorldBuffer(), frameData.camera,
                 tick);
 
             if (MainWindow.debugZbuffer)
@@ -197,19 +185,12 @@ namespace GPURayTracer.Rendering
                     frameData.framebuffer0.D, frameData.framebuffer1.D,
                     MainWindow.debugTAADistScale, MainWindow.debugTAAScale, tick);
 
-                FilterKernel(frameData.framebuffer1.ColorFrameBuffer.Extent / 3,
-                    frameData.framebuffer1.ColorFrameBuffer,
-                    frameData.finalFrameBuffer,
-                    frameData.camera, 2);
-
-                outputKernel(frameData.finalFrameBuffer.Extent / 3, frameData.finalFrameBuffer, frameData.bitmapData, frameData.camera);
+                outputKernel(frameData.framebuffer1.ColorFrameBuffer.Extent / 3, frameData.framebuffer1.ColorFrameBuffer, frameData.bitmapData, frameData.camera);
             }
             else if (MainWindow.debugLighting)
             {
-                FilterKernel(frameData.framebuffer0.LightingFrameBuffer.Extent / 3,
-                    frameData.framebuffer0.LightingFrameBuffer,
-                    frameData.framebuffer1.LightingFrameBuffer,
-                    frameData.camera, 0);
+                normalizeLightingKernel(frameData.framebuffer0.LightingFrameBuffer.Extent / 3,
+                    frameData.framebuffer0.LightingFrameBuffer);
 
                 outputKernel(frameData.framebuffer1.LightingFrameBuffer.Extent / 3, frameData.framebuffer0.LightingFrameBuffer, frameData.bitmapData, frameData.camera);
             }
@@ -218,10 +199,10 @@ namespace GPURayTracer.Rendering
                 normalizeLightingKernel(frameData.framebuffer0.LightingFrameBuffer.Extent / 3,
                     frameData.framebuffer0.LightingFrameBuffer);
 
-                combineKernel(frameData.framebuffer0.ColorFrameBuffer.Extent / 3,
-                    frameData.framebuffer0.ColorFrameBuffer,
-                    frameData.framebuffer0.LightingFrameBuffer,
-                    frameData.framebuffer0.DrawableIDBuffer);
+                //combineKernel(frameData.framebuffer0.ColorFrameBuffer.Extent / 3,
+                //    frameData.framebuffer0.ColorFrameBuffer,
+                //    frameData.framebuffer0.LightingFrameBuffer,
+                //    frameData.framebuffer0.DrawableIDBuffer);
 
                 outputKernel(frameData.framebuffer0.ColorFrameBuffer.Extent / 3, frameData.framebuffer0.ColorFrameBuffer, frameData.bitmapData, frameData.camera);
             }

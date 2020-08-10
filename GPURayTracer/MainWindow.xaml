@@ -11,7 +11,7 @@
         <StackPanel Margin="30" HorizontalAlignment="Right" VerticalAlignment="Top">
             <Label Name="instructions" FontSize="12" Foreground="Black" />
         </StackPanel>
-        <StackPanel Margin="30" HorizontalAlignment="Left" VerticalAlignment="Top">
+        <StackPanel Margin="30" HorizontalAlignment="Left" VerticalAlignment="Top" Background="#55FFFFFF">
             <Label Name="FPS" Content="FPS: " FontSize="12" Foreground="Black" />
             <Label Name="camera" Content="" FontSize="12" Foreground="Black" />
             <Label Name="debug" Content="RES: " FontSize="12" Foreground="Black" />
@@ -20,12 +20,6 @@
                 <Button Content="-" Width="25" Height="25" Margin="5" Click="SFMinus_Click"/>
                 <Button Content="Default : -1" Height="25" Margin="5" Click="SFDef_Click"/>
                 <Button Content="+" Width="25" Height="25" Margin="5" Click="SFPlus_Click"/>
-            </StackPanel>
-            <Label Name="samples" Content="Sample Per Pixel: " FontSize="12" Foreground="Black" />
-            <StackPanel Orientation="Horizontal">
-                <Button Content="-" Width="25" Height="25" Margin="5" Click="SampleMinus_Click"/>
-                <Button Content="Default : 0" Height="25" Margin="5"  Click="SampleDef_Click"/>
-                <Button Content="+" Width="25" Height="25" Margin="5" Click="SamplePlus_Click"/>
             </StackPanel>
             <Button Content="TAA Toggle" Click="TaaToggleClick" />
             <Label Name="taaLabel" Content="TAA: " FontSize="12" Foreground="Black" />

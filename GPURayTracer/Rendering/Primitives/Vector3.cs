@@ -2,22 +2,19 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 
 namespace GPURayTracer.Rendering
 {
-    [StructLayout(LayoutKind.Sequential, Pack = 0)]
     public struct Vec3
     {
-        public static readonly Vec3 xAxis = new Vec3(1, 0, 0);
-        public static readonly Vec3 yAxis = new Vec3(0, 1, 0);
-        public static readonly Vec3 zAxis = new Vec3(0, 0, 1);
-
         public float x;
         public float y;
         public float z;
+
 
         public Vec3(float x, float y, float z)
         {
@@ -38,15 +35,18 @@ namespace GPURayTracer.Rendering
             return "{" + string.Format("{0:0.00}", x) + ", " + string.Format("{0:0.00}", y) + ", " + string.Format("{0:0.00}", z) + "}";
         }
 
+
         public static Vec3 operator -(Vec3 vec)
         {
             return new Vec3(-vec.x, -vec.y, -vec.z);
         }
 
+
         public float length()
         {
             return XMath.Sqrt(x * x + y * y + z * z);
         }
+
 
         public float lengthSquared()
         {
@@ -83,6 +83,7 @@ namespace GPURayTracer.Rendering
             return new Vec3(v.x, v.y, z);
         }
 
+
         public static float dist(Vec3 v1, Vec3 v2)
         {
             float dx = v1.x - v2.x;
@@ -91,10 +92,12 @@ namespace GPURayTracer.Rendering
             return XMath.Sqrt(dx * dx + dy * dy + dz * dz);
         }
 
+
         public static Vec3 operator +(Vec3 v1, Vec3 v2)
         {
             return new Vec3(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z);
         }
+
 
         public static Vec3 operator -(Vec3 v1, Vec3 v2)
         {
@@ -113,35 +116,48 @@ namespace GPURayTracer.Rendering
             return new Vec3(v1.x / v2.x, v1.y / v2.y, v1.z / v2.z);
         }
 
+
+        public static Vec3 operator /(float v, Vec3 v1)
+        {
+            return new Vec3(v / v1.x, v / v1.y, v / v1.z);
+        }
+
+
         public static Vec3 operator *(Vec3 v1, float v)
         {
             return new Vec3(v1.x * v, v1.y * v, v1.z * v);
         }
+
 
         public static Vec3 operator *(float v, Vec3 v1)
         {
             return new Vec3(v1.x * v, v1.y * v, v1.z * v);
         }
 
+
         public static Vec3 operator +(Vec3 v1, float v)
         {
             return new Vec3(v1.x + v, v1.y + v, v1.z + v);
         }
+
 
         public static Vec3 operator +(float v, Vec3 v1)
         {
             return new Vec3(v1.x + v, v1.y + v, v1.z + v);
         }
 
+
         public static Vec3 operator /(Vec3 v1, float v)
         {
             return v1 * (1.0f / v);
         }
 
+
         public static float dot(Vec3 v1, Vec3 v2)
         {
             return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
         }
+
 
         public static Vec3 cross(Vec3 v1, Vec3 v2)
         {
@@ -149,6 +165,7 @@ namespace GPURayTracer.Rendering
                           -(v1.x * v2.z - v1.z * v2.x),
                             v1.x * v2.y - v1.y * v2.x);
         }
+
 
         public static Vec3 unitVector(Vec3 v)
         {
@@ -160,6 +177,7 @@ namespace GPURayTracer.Rendering
         {
             return unitVector(incomming - normal * 2f * dot(incomming, normal));
         }
+
 
         public static Vec3 refract(Vec3 v, Vec3 n, float niOverNt)
         {
@@ -174,6 +192,7 @@ namespace GPURayTracer.Rendering
 
             return v;
         }
+
 
         public static float NormalReflectance(Vec3 normal, Vec3 incomming, float iorFrom, float iorTo)
         {
@@ -191,6 +210,7 @@ namespace GPURayTracer.Rendering
             return (rPerpendicular * rPerpendicular + rParallel * rParallel) / 2f;
         }
 
+
         public static Vec3 aces_approx(Vec3 v)
         {
             v *= 0.6f;
@@ -203,16 +223,20 @@ namespace GPURayTracer.Rendering
             return new Vec3(XMath.Clamp(working.x, 0, 1), XMath.Clamp(working.y, 0, 1), XMath.Clamp(working.z, 0, 1));
         }
 
+
         public static Vec3 reinhard(Vec3 v)
         {
             return v / (1.0f + v);
         }
+
+
         public static bool Equals(Vec3 a, Vec3 b)
         {
             return a.x == b.x &&
                    a.y == b.y &&
                    a.z == b.z;
         }
+
         public static implicit operator Vector3(Vec3 d)
         {
             return new Vector3((float)d.x, (float)d.y, (float)d.z);
