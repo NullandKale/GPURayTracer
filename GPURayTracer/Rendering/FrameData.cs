@@ -26,7 +26,7 @@ namespace GPURayTracer.Rendering
 
         public void changeSize(int width, int height, int maxBounces)
         {
-            camera = new Camera(new Vec3(0, -65, -5), new Vec3(0,-65,-4), Vec3.unitVector(new Vec3(0, 1, 0)), width, height, maxBounces, 40f);
+            camera = new Camera(new Vec3(0, -1, -5), new Vec3(0,-1,-4), Vec3.unitVector(new Vec3(0, 1, 0)), width, height, maxBounces, 40f);
             
             finalFrameBuffer = device.Allocate<float>(width * height * 3);
 

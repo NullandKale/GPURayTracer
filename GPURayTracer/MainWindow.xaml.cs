@@ -40,7 +40,7 @@ namespace GPURayTracer
 
         public double scale = -1;
         public int maxBounces = 5;
-        public int targetFPS = 70000;
+        public int targetFPS = 7000;
         public bool forceCPU = false;
         public Point? lastMousePos;
         public bool mouseDebounce = true;
@@ -100,7 +100,7 @@ namespace GPURayTracer
            Trace.WriteLine("X: " + width + " " + (width * 3) + " " + ((width * 3) % 4));
            width += ((width * 3) % 4);
            Trace.WriteLine("fixed X: " + width + " " + (width * 3) + " " + ((width * 3) % 4));
-            restartRenderer();
+           restartRenderer();
         }
 
         public void restartRenderer()

@@ -33,7 +33,6 @@ namespace GPURayTracer.Rendering
             ColorRay(index, ray, framebuffer, world, rng, camera);
         }
 
-
         private static void ColorRay(int index,
             Ray ray,
             dFramebuffer framebuffer,
@@ -46,9 +45,11 @@ namespace GPURayTracer.Rendering
             Ray working = ray;
             bool attenuationHasValue = false;
 
+            float minT = 0.1f;
+
             for (int i = 0; i < camera.maxBounces; i++)
             {
-                HitRecord rec = GetWorldHit(working, world);
+                HitRecord rec = GetWorldHit(working, world, minT);
 
                 if (rec.materialID == -1)
                 {
@@ -69,7 +70,7 @@ namespace GPURayTracer.Rendering
                         framebuffer.DrawableIDBuffer[index] = rec.drawableID;
                     }
 
-                    ScatterRecord sRec = Scatter(working, rec, rng, world.materials);
+                    ScatterRecord sRec = Scatter(working, rec, rng, world.materials, minT);
                     if (sRec.materialID != -1)
                     {
                         attenuationHasValue = sRec.mirrorSkyLightingFix;
@@ -87,11 +88,9 @@ namespace GPURayTracer.Rendering
                 {
                     Sphere s = world.spheres[world.lightSphereIDs[j]];
                     Vec3 lightDir = s.center - rec.p;
-                    float lightDist = (s.center - rec.p).length() - s.radius;
-                    Vec3 shadowOrig = rec.p;
-                    HitRecord shadowRec = GetWorldHit(new Ray(rec.p, lightDir), world);
+                    HitRecord shadowRec = GetWorldHit(new Ray(rec.p, lightDir), world, minT);
 
-                    if (shadowRec.materialID != -1 && (shadowRec.p - shadowOrig).length() >= lightDist - 0.1f) // the second part of this IF could probably be much more efficent
+                    if (shadowRec.materialID != -1 && (shadowRec.p - rec.p).length() > lightDir.length() - (s.radius * 1.1f)) // the second part of this IF could probably be much more efficent
                     {
                         MaterialData material = world.materials[shadowRec.materialID];
                         if (material.type != 1)
@@ -126,11 +125,10 @@ namespace GPURayTracer.Rendering
             return new Vec3(r * XMath.Cos(a), r * XMath.Sin(a), z);
         }
 
-
-        private static HitRecord GetWorldHit(Ray r, dWorldBuffer world)
+        private static HitRecord GetWorldHit(Ray r, dWorldBuffer world, float minT)
         {
-            HitRecord rec = GetSphereHit(r, world.spheres);
-            HitRecord vRec = world.VoxelChunk.hit(r, 0, rec.t);
+            HitRecord rec = GetSphereHit(r, world.spheres, minT);
+            HitRecord vRec = world.VoxelChunk.hit(r, minT, rec.t);
             HitRecord triRec = GetMeshHit(r, world, vRec.t);
 
             if (rec.t < vRec.t && rec.t < triRec.t)
@@ -148,7 +146,7 @@ namespace GPURayTracer.Rendering
         }
 
 
-        private static HitRecord GetSphereHit(Ray r, ArrayView<Sphere> spheres)
+        private static HitRecord GetSphereHit(Ray r, ArrayView<Sphere> spheres, float minT)
         {
             float closestT = 10000;
             int sphereIndex = -1;
@@ -165,11 +163,11 @@ namespace GPURayTracer.Rendering
                 float c = Vec3.dot(oc, oc) - s.radiusSquared;
                 float discr = (b * b) - (c);
 
-                if (discr > 0.01f)
+                if (discr > 0.1f)
                 {
                     float sqrtdisc = XMath.Sqrt(discr);
                     float temp = (-b - sqrtdisc);
-                    if (temp < closestT && temp > 0.01f)
+                    if (temp < closestT && temp > minT)
                     {
                         closestT = temp;
                         sphereIndex = i;
@@ -177,7 +175,7 @@ namespace GPURayTracer.Rendering
                     else
                     {
                         temp = (-b + sqrtdisc);
-                        if (temp < closestT && temp > 0.01f)
+                        if (temp < closestT && temp > minT)
                         {
                             closestT = temp;
                             sphereIndex = i;
@@ -206,7 +204,7 @@ namespace GPURayTracer.Rendering
 
             for (int i = 0; i < world.meshes.Length; i++)
             {
-                if (world.meshes[i].aabb.hit(r, 0, dist))
+                if (world.meshes[i].aabb.hit(r, nearerThan, dist))
                 {
                     HitRecord meshHit = GetTriangleHit(r, world, world.meshes[i], dist);
                     if(meshHit.t < dist)
@@ -237,7 +235,7 @@ namespace GPURayTracer.Rendering
                 Vec3 pVec = Vec3.cross(r.b, tvVec);
                 float det = Vec3.dot(tuVec, pVec);
 
-                if (XMath.Abs(det) > 0.0001f)
+                if (XMath.Abs(det) > nearerThan)
                 {
                     float invDet = 1.0f / det;
                     Vec3 tVec = r.a - t.Vert0;
@@ -248,7 +246,7 @@ namespace GPURayTracer.Rendering
                     if (u > 0 && u <= 1.0f && v > 0 && u + v <= 1.0f)
                     {
                         float temp = Vec3.dot(tvVec, qVec) * invDet;
-                        if (temp > 0.001f && temp < currentNearestDist)
+                        if (temp > nearerThan && temp < currentNearestDist)
                         {
                             currentNearestDist = temp;
                             NcurrentIndex = i;
@@ -277,7 +275,7 @@ namespace GPURayTracer.Rendering
         }
 
 
-        private static ScatterRecord Scatter(Ray r, HitRecord rec, XorShift64Star rng, ArrayView<MaterialData> materials)
+        private static ScatterRecord Scatter(Ray r, HitRecord rec, XorShift64Star rng, ArrayView<MaterialData> materials, float minT)
         {
             MaterialData material = materials[rec.materialID];
             Ray ray;
@@ -294,7 +292,7 @@ namespace GPURayTracer.Rendering
             }
             else if (material.type == 1) // dielectric
             {
-                if (Vec3.dot(r.b, rec.normal) > 0.01f)
+                if (Vec3.dot(r.b, rec.normal) > minT)
                 {
                     outward_normal = -rec.normal;
                     ni_over_nt = material.ref_idx;
@@ -312,7 +310,7 @@ namespace GPURayTracer.Rendering
                 float dt = Vec3.dot(r.b, outward_normal);
                 float discriminant = 1.0f - ni_over_nt * ni_over_nt * (1f - dt * dt);
 
-                if (discriminant > 0.001f)
+                if (discriminant > minT)
                 {
 
                     if (rng.NextFloat() < schlick(cosine, material.ref_idx))
@@ -333,7 +331,7 @@ namespace GPURayTracer.Rendering
             else if (material.type == 2) //Metal
             {
                 reflected = Vec3.reflect(rec.normal, r.b);
-                if (material.reflectionConeAngleRadians > 0.001f)
+                if (material.reflectionConeAngleRadians > minT)
                 {
                     ray = new Ray(rec.p, reflected + (material.reflectionConeAngleRadians * RandomUnitVector(rng)));
                 }
@@ -342,14 +340,14 @@ namespace GPURayTracer.Rendering
                     ray = new Ray(rec.p, reflected);
                 }
 
-                if ((Vec3.dot(ray.b, rec.normal) > 0.001f))
+                if ((Vec3.dot(ray.b, rec.normal) > minT))
                 {
                     return new ScatterRecord(rec.materialID, ray, material.color, true);
                 }
             }
             else if (material.type == 3) //Lights
             {
-                refracted = rec.p + rec.normal + RandomUnitVector(rng);
+                refracted = rec.p + rec.normal;
                 return new ScatterRecord(rec.materialID, new Ray(rec.p, refracted - rec.p), material.color, false);
             }
 

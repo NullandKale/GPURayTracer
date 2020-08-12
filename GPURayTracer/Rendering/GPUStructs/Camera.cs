@@ -132,21 +132,21 @@ namespace GPURayTracer.Rendering
             if (input.IsKeyHeld(OpenTK.Input.Key.S))
             {
                 movement -= (camera.lookAt - camera.origin) * speed;
-                //movement.y = 0;
+                movement.y = 0;
                 moved = true;
             }
 
             if (input.IsKeyHeld(OpenTK.Input.Key.D))
             {
                 movement -= Vec3.cross(camera.up, (camera.lookAt - camera.origin)) * speed;
-                //movement.y = 0;
+                movement.y = 0;
                 moved = true;
             }
 
             if (input.IsKeyHeld(OpenTK.Input.Key.A))
             {
                 movement += Vec3.cross(camera.up, (camera.lookAt - camera.origin)) * speed;
-                //movement.y = 0;
+                movement.y = 0;
                 moved = true;
             }
 

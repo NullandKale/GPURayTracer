@@ -11,7 +11,7 @@ namespace GPURayTracer.Rendering.GPUStructs
     {
         public Accelerator device;
 
-        hVoxelChunk voxelChunk;
+        public hVoxelChunk voxelChunk;
 
         public List<int> lightSphereIDs;
         public List<Sphere> spheres;
@@ -50,14 +50,13 @@ namespace GPURayTracer.Rendering.GPUStructs
             int[] tileMaterials =
             {
                 -1,
-                addMaterial(MaterialData.makeDiffuse(new Vec3(0, 0, 1))),
-                addMaterial(MaterialData.makeDiffuse(new Vec3(1, 0, 0))),
-                addMaterial(MaterialData.makeDiffuse(new Vec3(0, 1, 0))),
-                addMaterial(MaterialData.makeGlass(new Vec3(1, 1, 1), 1.3f)),
-                addMaterial(MaterialData.makeMirror(new Vec3(1, 1, 1), 0f)),
+                addMaterial(MaterialData.makeDiffuse(new Vec3(0, 0, 0.99))),
+                addMaterial(MaterialData.makeDiffuse(new Vec3(0.99, 0, 0))),
+                addMaterial(MaterialData.makeDiffuse(new Vec3(0, 0.99, 0))),
+                addMaterial(MaterialData.makeMirror(new Vec3(0.99, 0.99, 0.99), 0.01f)),
             };
 
-            voxelChunk = new hVoxelChunk(device, new Vec3(-64, -64, -64), 128, 128, 128, 256, tileMaterials);
+            voxelChunk = new hVoxelChunk(device, new Vec3(0, 0, 0), 1024, 256, 1024, 768, tileMaterials);
         }
 
         public int addMaterial(MaterialData toAdd)

@@ -53,7 +53,7 @@ namespace GPURayTracer.Rendering.GPUStructs
 
                 Vec3 pos = ray.a;
 
-                Vec3i iPos = new Vec3i(XMath.Floor(ray.a.x), XMath.Floor(ray.a.y), XMath.Floor(ray.a.z));
+                Vec3i iPos = new Vec3i(XMath.Floor(pos.x), XMath.Floor(pos.y), XMath.Floor(pos.z));
 
                 Vec3 step = new Vec3(ray.b.x > 0 ? 1f : -1f, ray.b.y > 0 ? 1f : -1f, ray.b.z > 0 ? 1f : -1f);
 
@@ -164,16 +164,16 @@ namespace GPURayTracer.Rendering.GPUStructs
         public hVoxelChunk(Accelerator device, Vec3 position, int width, int height, int depth, int maxViewDist, int[] materialIDs)
         {
             this.device = device;
-            this.position = position;
+            this.position = position - new Vec3(width / 2f, 0, depth / 2f);
             this.width = width;
             this.depth = depth;
             this.height = height;
             this.maxViewDist = maxViewDist;
             this.materialIDs = materialIDs;
             
-            tiles = new int[width, depth, height];
+            tiles = new int[width, height, depth];
 
-            Random rng = new Random();
+            Random rng = new Random(5);
 
             for(int x = 0; x < width; x++)
             {
@@ -181,7 +181,7 @@ namespace GPURayTracer.Rendering.GPUStructs
                 {
                     for (int z = 0; z < depth; z++)
                     {
-                        tiles[x, y, z] = rng.NextDouble() < 0.25 ? rng.Next(1, materialIDs.Length + 1) : 0;
+                        tiles[x, y, z] = rng.NextDouble() < 0.25 ? rng.Next(1, materialIDs.Length) : 0;
                     }
                 }
             }
@@ -193,7 +193,7 @@ namespace GPURayTracer.Rendering.GPUStructs
             d_materialIDs.CopyFrom(materialIDs, 0, 0, materialIDs.Length);
         }
 
-        public hVoxelChunk(Accelerator device, Vec3 position, int width, int depth, int height, int[,,] tiles)
+        public hVoxelChunk(Accelerator device, Vec3 position, int width, int depth, int height, int maxViewDist, int[] materialIDs, int[,,] tiles)
         {
             this.device = device;
             this.position = position;
@@ -201,9 +201,16 @@ namespace GPURayTracer.Rendering.GPUStructs
             this.depth = depth;
             this.height = height;
             this.tiles = tiles;
+            this.maxViewDist = maxViewDist;
+            this.materialIDs = materialIDs;
 
             d_tiles = device.Allocate<int>(new Index3(width, height, depth));
             d_tiles.CopyFrom(tiles, new Index3(), new Index3(), d_tiles.Extent);
+        }
+
+        public void setTile(Vec3i pos, int tile)
+        {
+            tiles[pos.x, pos.y, pos.z] = tile;
         }
 
         public dVoxelChunk GetDeviceVoxelChunk()
