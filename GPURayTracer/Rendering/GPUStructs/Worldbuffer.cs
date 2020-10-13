@@ -56,7 +56,7 @@ namespace GPURayTracer.Rendering.GPUStructs
                 addMaterial(MaterialData.makeMirror(new Vec3(0.99, 0.99, 0.99), 0.01f)),
             };
 
-            voxelChunk = new hVoxelChunk(device, new Vec3(0, 0, 0), 1024, 256, 1024, 768, tileMaterials);
+            //voxelChunk = new hVoxelChunk(device, new Vec3(0, 0, 0), 512, 256, 512, 512, tileMaterials);
         }
 
         public int addMaterial(MaterialData toAdd)
@@ -101,7 +101,14 @@ namespace GPURayTracer.Rendering.GPUStructs
 
         public dWorldBuffer GetDWorldBuffer()
         {
-            return new dWorldBuffer(getDeviceSpheres(), getDeviceLightSphereIDs(), getDeviceMaterials(), getDeviceMeshes(), getDeviceVerts(), getDeviceTriangles(), getDeviceTriangleMats(), voxelChunk.GetDeviceVoxelChunk());
+            if(voxelChunk != null)
+            {
+                return new dWorldBuffer(getDeviceSpheres(), getDeviceLightSphereIDs(), getDeviceMaterials(), getDeviceMeshes(), getDeviceVerts(), getDeviceTriangles(), getDeviceTriangleMats(), voxelChunk.GetDeviceVoxelChunk());
+            }
+            else
+            {
+                return new dWorldBuffer(getDeviceSpheres(), getDeviceLightSphereIDs(), getDeviceMaterials(), getDeviceMeshes(), getDeviceVerts(), getDeviceTriangles(), getDeviceTriangleMats(), default);
+            }
         }
 
         private void updateMeshData(hGPUMesh toAdd)
