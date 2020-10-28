@@ -30,8 +30,11 @@ namespace GPURayTracer.Utils
 
         public void write(ref byte[] data)
         {
-            data.CopyTo(this.data, 0);
-            onImageUpdate();
+            if(this.data.Length == data.Length)
+            {
+                data.CopyTo(this.data, 0);
+                onImageUpdate();
+            }
         }
 
         public void update()

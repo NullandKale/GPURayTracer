@@ -49,16 +49,13 @@ namespace GPURayTracer.Rendering
             context.EnableAlgorithms();
             initBestDevice(forceCPU);
 
-            frameData = new FrameData(device, width, height, maxBounce);
+            setResolution(frameManager, width, height, maxBounce);
             worldData = new WorldData(device);
             inputManager = new InputManager();
 
             this.targetFPS = targetFPS;
 
             run = true;
-            frame = frameManager;
-
-            output = new byte[width * height * 3];
 
             renderThreadTimer = new UpdateStatsTimer();
 
@@ -72,6 +69,23 @@ namespace GPURayTracer.Rendering
             renderKernel = device.LoadAutoGroupedStreamKernel<Index2, dFramebuffer, dWorldBuffer, Camera, int>(RTKernels.RenderKernel);
 
             startRenderThread();
+        }
+
+        public void setResolution(FrameManager frameManager, int width, int height, int maxBounce)
+        {
+            waitForRenderThreadLock(100000);
+
+            frame = frameManager;
+            if (frameData != null)
+            {
+                frameData.changeSize(width, height);
+            }
+            else
+            {
+                frameData = new FrameData(device, width, height, maxBounce);
+            }
+
+            output = new byte[width * height * 3];
         }
 
         private void initBestDevice(bool forceCPU)
@@ -108,14 +122,17 @@ namespace GPURayTracer.Rendering
         }
         public void waitForRenderThreadLock(int msToWait)
         {
-            for (int i = 0; i < msToWait; i++)
+            if(RenderThread != null)
             {
-                if (renderThreadLock)
+                for (int i = 0; i < msToWait; i++)
                 {
-                    return;
-                }
+                    if (renderThreadLock)
+                    {
+                        return;
+                    }
 
-                Thread.Sleep(1);
+                    Thread.Sleep(1);
+                }
             }
         }
 
@@ -209,7 +226,11 @@ namespace GPURayTracer.Rendering
 
             device.Synchronize();
 
-            frameData.bitmapData.CopyTo(output, 0, 0, frameData.bitmapData.Length);
+            if(frameData.bitmapData.Length == output.Length)
+            {
+                frameData.bitmapData.CopyTo(output, 0, 0, frameData.bitmapData.Length);
+            }
+
             tick++;
         }
 

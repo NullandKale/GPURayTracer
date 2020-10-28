@@ -21,13 +21,19 @@ namespace GPURayTracer.Rendering
         public FrameData(Accelerator device, int width, int height, int maxBounces)
         {
             this.device = device;
-            changeSize(width, height, maxBounces);
+            
+            camera = new Camera(new Vec3(0, -1, -5), new Vec3(0, -1, -4), Vec3.unitVector(new Vec3(0, 1, 0)), width, height, maxBounces, 40f);
+
+            changeSize(width, height);
         }
 
-        public void changeSize(int width, int height, int maxBounces)
+        public void changeSize(int width, int height)
         {
-            camera = new Camera(new Vec3(0, -1, -5), new Vec3(0,-1,-4), Vec3.unitVector(new Vec3(0, 1, 0)), width, height, maxBounces, 40f);
-            
+            if(finalFrameBuffer != null)
+            {
+                Dispose();
+            }
+
             finalFrameBuffer = device.Allocate<float>(width * height * 3);
 
             framebuffer0 = new hFramebuffer(device, width, height);

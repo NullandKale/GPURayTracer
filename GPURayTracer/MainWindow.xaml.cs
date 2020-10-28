@@ -35,12 +35,12 @@ namespace GPURayTracer
         public static float debugTAAScale = 0.45f;
         public static float debugTAADistScale = 2f;
 
-        public int width;
-        public int height;
+        public int width = 1920;
+        public int height = 1080;
 
-        public double scale = -7;
+        public double scale = -7.5;
         public int maxBounces = 5;
-        public int targetFPS = 7000;
+        public int targetFPS = 70;
         public bool forceCPU = false;
         public Point? lastMousePos;
         public bool mouseDebounce = true;
@@ -54,7 +54,12 @@ namespace GPURayTracer
         public MainWindow()
         {
             InitializeComponent();
+            
             Closed += MainWindow_Closed;
+
+            resetRenderSize();
+            restartRenderer();
+
             SizeChanged += Window_SizeChanged;
             if(mouseEnabled) Frame.Cursor = Cursors.None;
             taaLabel.Content = debugTAA && !debugZbuffer ? string.Format("TAA ON # {0:0.##}", debugTAAScale) : "TAA OFF";
@@ -100,13 +105,25 @@ namespace GPURayTracer
            Trace.WriteLine("X: " + width + " " + (width * 3) + " " + ((width * 3) % 4));
            width += ((width * 3) % 4);
            Trace.WriteLine("fixed X: " + width + " " + (width * 3) + " " + ((width * 3) % 4));
-           restartRenderer();
+            resetRenderSize();
+        }
+
+        public void resetRenderSize()
+        {
+            frame = new FrameManager(onImage, width, height);
+            Frame.Source = frame.wBitmap;
+            if(rtRenderer != null)
+            {
+                rtRenderer.setResolution(frame, width, height, maxBounces);
+            }
+            else
+            {
+                restartRenderer();
+            }
         }
 
         public void restartRenderer()
         {
-            frame = new FrameManager(onImage, width, height);
-            Frame.Source = frame.wBitmap;
             displayTimer = new UpdateStatsTimer();
 
             if (rtRenderer != null)
