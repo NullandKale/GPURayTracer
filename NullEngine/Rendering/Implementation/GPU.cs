@@ -45,7 +45,8 @@ namespace NullEngine.Rendering.Implementation
 
         public void Render(ByteFrameBuffer output, RenderDataManager renderDataManager, FrameData frameData)
         {
-            generateFrame(output.memoryBuffer.Length, output.frameBuffer, frameData.deviceFrameData, renderDataManager.getDeviceRenderData());
+            generateFrame(output.memoryBuffer.Length / 3, output.frameBuffer, frameData.deviceFrameData, renderDataManager.getDeviceRenderData());
+            device.Synchronize();
         }
     }
 
@@ -53,8 +54,8 @@ namespace NullEngine.Rendering.Implementation
     {
         public static void GenerateFrame(Index1 pixel, dByteFrameBuffer output, dFrameData frameData, dRenderData renderData)
         {
-            Vec3 final = UtilityKernels.readFrameBuffer(frameData.outputBuffer, pixel);
-            output.writeFrameBuffer(pixel, final.x, final.y, final.z);
+            Vec3 color = UtilityKernels.readFrameBuffer(frameData.outputBuffer, pixel * 3);
+            output.writeFrameBuffer(pixel * 3, color.x, color.y, color.z);
         }
 
     }

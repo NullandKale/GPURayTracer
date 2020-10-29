@@ -42,7 +42,6 @@ namespace GPURayTracer.Rendering.Primitives
             return new Triangle(Vert0, Vert1, Vert2, world.triangleMaterials[index]);
         }
     }
-
     public struct hGPUMesh
     {
         public AABB aabb;

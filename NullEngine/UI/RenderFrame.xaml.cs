@@ -1,4 +1,6 @@
-﻿using System;
+﻿using ILGPU;
+using ILGPU.Runtime;
+using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -99,14 +101,14 @@ namespace NullEngine.UI
 
         public void update(ref byte[] data)
         {
-            wBitmap.Lock();
-            IntPtr pBackBuffer = wBitmap.BackBuffer;
-            Marshal.Copy(data, 0, pBackBuffer, data.Length);
-            wBitmap.AddDirtyRect(rect);
-            wBitmap.Unlock();
-
-            if (frameRate != 0)
+            if(data.Length == wBitmap.PixelWidth * wBitmap.PixelHeight * 3)
             {
+                wBitmap.Lock();
+                IntPtr pBackBuffer = wBitmap.BackBuffer;
+                Marshal.Copy(data, 0, pBackBuffer, data.Length);
+                wBitmap.AddDirtyRect(rect);
+                wBitmap.Unlock();
+
                 Info.Content = (int)frameRate + " MS";
             }
         }

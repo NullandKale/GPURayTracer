@@ -38,15 +38,15 @@ namespace NullEngine.Rendering.DataStructures
             this.frame = frame.View;
         }
 
-        public (float r, float g, float b) readFrameBuffer(int x, int y)
+        public Vec3 readFrameBuffer(int x, int y)
         {
             int newIndex = ((y * width) + x) * 3;
             return readFrameBuffer(newIndex);
         }
 
-        public (float r, float g, float b) readFrameBuffer(int index)
+        public Vec3 readFrameBuffer(int index)
         {
-            return (frame[index], frame[index + 1], frame[index + 2]);
+            return new Vec3(frame[index], frame[index + 1], frame[index + 2]);
         }
 
         public void writeFrameBuffer(int x, int y, float r, float g, float b)
@@ -100,15 +100,15 @@ namespace NullEngine.Rendering.DataStructures
             this.frame = frame.View;
         }
 
-        public (byte r, byte g, byte b) readFrameBuffer(int x, int y)
+        public Vec3i readFrameBuffer(int x, int y)
         {
             int newIndex = ((y * width) + x) * 3;
             return readFrameBuffer(newIndex);
         }
 
-        public (byte r, byte g, byte b) readFrameBuffer(int index)
+        public Vec3i readFrameBuffer(int index)
         {
-            return (frame[index], frame[index + 1], frame[index + 2]);
+            return new Vec3i(frame[index], frame[index + 1], frame[index + 2]);
         }
 
         public void writeFrameBuffer(int x, int y, float r, float g, float b)

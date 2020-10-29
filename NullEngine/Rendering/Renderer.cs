@@ -9,6 +9,7 @@ using ILGPU;
 using ILGPU.Runtime;
 using NullEngine.Rendering.Implementation;
 using System.Windows;
+using System.Windows.Media;
 
 namespace NullEngine.Rendering
 {
@@ -18,8 +19,6 @@ namespace NullEngine.Rendering
         public int height;
         
         private bool run = true;
-        private bool framebufferReady = true;
-        private bool dRes;
         private int targetFramerate;
         private double frameTime;
 
@@ -33,8 +32,6 @@ namespace NullEngine.Rendering
         private Thread renderThread;
         private FrameTimer frameTimer;
 
-        private Action<Index1, dByteFrameBuffer, byte, byte, byte> clearFramebuffer;
-
         public Renderer(UI.RenderFrame renderFrame, int targetFramerate, bool forceCPU)
         {
             this.renderFrame = renderFrame;
@@ -42,7 +39,6 @@ namespace NullEngine.Rendering
 
             gpu = new GPU(forceCPU);
             renderDataManager = new RenderDataManager(gpu);
-            clearFramebuffer = gpu.device.LoadAutoGroupedStreamKernel<Index1, dByteFrameBuffer, byte, byte, byte>(UtilityKernels.ClearByteFramebuffer);
             frameTimer = new FrameTimer();
 
             renderFrame.onResolutionChanged = OnResChanged;
@@ -59,30 +55,72 @@ namespace NullEngine.Rendering
         public void Stop()
         {
             run = false;
-            framebufferReady = true;
             renderThread.Join();
-            deviceFrameBuffer.Dispose();
-            gpu.Dispose();
         }
 
         private void OnResChanged(int width, int height)
         {
-            while(!framebufferReady && run)
-            {
-                Console.WriteLine("FUCK");
-            }
-
             this.width = width;
             this.height = height;
+        }
 
-            if(deviceFrameBuffer != null)
+        //eveything below this happens in the render thread
+        private void RenderThread()
+        {
+            while (run)
             {
-                deviceFrameBuffer.Dispose();
+                frameTimer.startUpdate();
+
+                if(ReadyFrameBuffer())
+                {
+                    RenderToFrameBuffer();
+                    Application.Current.Dispatcher.InvokeAsync(Draw);
+                }
+
+                frameTime = frameTimer.endUpdateForTargetUpdateTime(1000.0 / targetFramerate, true);
+                renderFrame.frameTime = frameTime;
             }
 
-            frameBuffer = new byte[width * height * 3];
-            deviceFrameBuffer = new ByteFrameBuffer(gpu, height, width);
-            frameData = new FrameData(gpu.device, width, height);
+            if (deviceFrameBuffer != null)
+            {
+                deviceFrameBuffer.Dispose();
+                frameData.Dispose();
+            }
+            gpu.Dispose();
+        }
+
+        private bool ReadyFrameBuffer()
+        {
+            if((width != 0 && height != 0))
+            {
+                if(deviceFrameBuffer == null || deviceFrameBuffer.frameBuffer.width != width || deviceFrameBuffer.frameBuffer.height != height)
+                {
+                    if (deviceFrameBuffer != null)
+                    {
+                        deviceFrameBuffer.Dispose();
+                        frameData.Dispose();
+                    }
+
+                    frameBuffer = new byte[width * height * 3];
+                    deviceFrameBuffer = new ByteFrameBuffer(gpu, height, width);
+                    frameData = new FrameData(gpu.device, width, height);
+                }
+
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        private void RenderToFrameBuffer()
+        {
+            if (deviceFrameBuffer != null && !deviceFrameBuffer.isDisposed)
+            {
+                gpu.Render(deviceFrameBuffer, renderDataManager, frameData);
+                deviceFrameBuffer.memoryBuffer.CopyTo(frameBuffer, 0, 0, frameBuffer.Length);
+            }
         }
 
         private void Draw()
@@ -90,37 +128,5 @@ namespace NullEngine.Rendering
             renderFrame.update(ref frameBuffer);
             renderFrame.frameRate = frameTimer.lastFrameTimeMS;
         }
-
-        private void RenderToFrameBuffer()
-        {
-            if(deviceFrameBuffer != null && !deviceFrameBuffer.isDisposed)
-            {
-                deviceFrameBuffer.inUse = true;
-                gpu.Render(deviceFrameBuffer, renderDataManager, frameData);
-                gpu.device.Synchronize();
-                deviceFrameBuffer.memoryBuffer.CopyTo(frameBuffer, 0, 0, frameBuffer.Length);
-                deviceFrameBuffer.inUse = false;
-            }
-        }
-
-        private void RenderThread()
-        {
-            while (run)
-            {
-                frameTimer.startUpdate();
-
-                RenderToFrameBuffer();
-                Application.Current.Dispatcher.InvokeAsync(Draw);
-
-                frameTime = frameTimer.endUpdateForTargetUpdateTime(1000.0 / targetFramerate, true);
-                if(dRes)
-                {
-                    renderFrame.frameTime = frameTime;
-                    Application.Current.Dispatcher.Invoke(renderFrame.UpdateScale);
-                }
-            }
-        }
-
-
     }
 }
