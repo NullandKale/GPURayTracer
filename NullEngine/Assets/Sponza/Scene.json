@@ -1,0 +1,13 @@
+{
+  "path": "../../../Assets/Sponza/Scene.json",
+  "objects": [
+    "../../../Assets/Sponza/sponza.obj"
+  ],
+  "positions": [
+    {}
+  ],
+  "rotations": [
+    {}
+  ],
+  "objectCount": 1
+}

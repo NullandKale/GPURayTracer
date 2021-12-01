@@ -1,4 +1,5 @@
 ﻿using ILGPU;
+using ILGPU.Runtime;
 using NullEngine.Rendering.DataStructures;
 using System;
 using System.Collections.Generic;
@@ -8,7 +9,7 @@ namespace NullEngine.Rendering.Implementation
 {
     public static class UtilityKernels
     {
-        public static void ClearByteFramebuffer(Index1 index, dByteFrameBuffer frameBuffer, byte r, byte g, byte b)
+        public static void ClearByteFramebuffer(Index1D index, dByteFrameBuffer frameBuffer, byte r, byte g, byte b)
         {
             //FLIP Y
             //int x = (frameBuffer.width - 1) - ((index) % frameBuffer.width);
@@ -22,13 +23,13 @@ namespace NullEngine.Rendering.Implementation
             frameBuffer.writeFrameBuffer(newIndex * 3, r, g, b);
         }
 
-        public static Vec3 readFrameBuffer(ArrayView<float> frame, int width, int x, int y)
+        public static Vec3 readFrameBuffer(ArrayView1D<float, Stride1D.Dense> frame, int width, int x, int y)
         {
             int newIndex = ((y * width) + x) * 3;
             return readFrameBuffer(frame, newIndex);
         }
 
-        public static Vec3 readFrameBuffer(ArrayView<float> frame, int index)
+        public static Vec3 readFrameBuffer(ArrayView1D<float, Stride1D.Dense> frame, int index)
         {
             return new Vec3(frame[index], frame[index + 1], frame[index + 2]);
         }

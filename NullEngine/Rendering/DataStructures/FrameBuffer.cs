@@ -11,11 +11,11 @@ namespace NullEngine.Rendering.DataStructures
     public class FloatFrameBuffer
     {
         public dFloatFrameBuffer frameBuffer;
-        public MemoryBuffer<float> memoryBuffer;
+        public MemoryBuffer1D<float, Stride1D.Dense> memoryBuffer;
 
         public FloatFrameBuffer(GPU gpu, int height, int width)
         {
-            memoryBuffer = gpu.device.Allocate<float>(height * width * 3);
+            memoryBuffer = gpu.device.Allocate1D<float>(height * width * 3);
             frameBuffer = new dFloatFrameBuffer(height, width, memoryBuffer);
         }
 
@@ -29,9 +29,9 @@ namespace NullEngine.Rendering.DataStructures
     {
         public int height;
         public int width;
-        public ArrayView<float> frame;
+        public ArrayView1D<float, Stride1D.Dense> frame;
 
-        public dFloatFrameBuffer(int height, int width, MemoryBuffer<float> frame)
+        public dFloatFrameBuffer(int height, int width, MemoryBuffer1D<float, Stride1D.Dense> frame)
         {
             this.height = height;
             this.width = width;
@@ -66,13 +66,13 @@ namespace NullEngine.Rendering.DataStructures
     public class ByteFrameBuffer
     {
         public dByteFrameBuffer frameBuffer;
-        public MemoryBuffer<byte> memoryBuffer;
+        public MemoryBuffer1D<byte, Stride1D.Dense> memoryBuffer;
         public bool isDisposed = false;
         public bool inUse = false;
 
         public ByteFrameBuffer(GPU gpu, int height, int width)
         {
-            memoryBuffer = gpu.device.Allocate<byte>(height * width * 3);
+            memoryBuffer = gpu.device.Allocate1D<byte>(height * width * 3);
             frameBuffer = new dByteFrameBuffer(height, width, memoryBuffer);
         }
 
@@ -91,9 +91,9 @@ namespace NullEngine.Rendering.DataStructures
     {
         public int height;
         public int width;
-        public ArrayView<byte> frame;
+        public ArrayView1D<byte, Stride1D.Dense> frame;
 
-        public dByteFrameBuffer(int height, int width, MemoryBuffer<byte> frame)
+        public dByteFrameBuffer(int height, int width, MemoryBuffer1D<byte, Stride1D.Dense> frame)
         {
             this.height = height;
             this.width = width;

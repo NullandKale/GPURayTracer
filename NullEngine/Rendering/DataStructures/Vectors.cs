@@ -234,6 +234,11 @@ namespace NullEngine.Rendering.DataStructures
                    a.z == b.z;
         }
 
+        public static int CompareTo(Vec3 a, Vec3 b)
+        {
+            return a.lengthSquared().CompareTo(b.lengthSquared());
+        }
+
         public static implicit operator Vector3(Vec3 d)
         {
             return new Vector3((float)d.x, (float)d.y, (float)d.z);

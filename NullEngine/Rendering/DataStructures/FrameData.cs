@@ -11,11 +11,13 @@ namespace NullEngine.Rendering.DataStructures
         public int width;
         public int height;
 
-        public MemoryBuffer<float> colorBuffer;
-        public MemoryBuffer<float> lightBuffer;
-        public MemoryBuffer<float> depthBuffer;
+        public MemoryBuffer1D<Ray, Stride1D.Dense> rayBuffer;
 
-        public MemoryBuffer<float> outputBuffer;
+        public MemoryBuffer1D<float, Stride1D.Dense> colorBuffer;
+        public MemoryBuffer1D<float, Stride1D.Dense> lightBuffer;
+        public MemoryBuffer1D<float, Stride1D.Dense> depthBuffer;
+
+        public MemoryBuffer1D<float, Stride1D.Dense> outputBuffer;
 
 
         public dFrameData deviceFrameData;
@@ -25,12 +27,15 @@ namespace NullEngine.Rendering.DataStructures
             this.width = width;
             this.height = height;
 
-            colorBuffer = device.Allocate<float>(width * height * 3);
-            lightBuffer = device.Allocate<float>(width * height * 3);
-            depthBuffer = device.Allocate<float>(width * height * 3);
-            outputBuffer = device.Allocate<float>(width * height * 3);
+            rayBuffer = device.Allocate1D<Ray>(width * height);
 
-            deviceFrameData = new dFrameData(width, height, colorBuffer, lightBuffer, depthBuffer, outputBuffer);
+            colorBuffer = device.Allocate1D<float>(width * height * 3);
+            lightBuffer = device.Allocate1D<float>(width * height * 3);
+            depthBuffer = device.Allocate1D<float>(width * height * 3);
+
+            outputBuffer = device.Allocate1D<float>(width * height * 3);
+
+            deviceFrameData = new dFrameData(this);
         }
 
         public void Dispose()
@@ -46,19 +51,23 @@ namespace NullEngine.Rendering.DataStructures
     {
         public int width;
         public int height;
-        public ArrayView<float> colorBuffer;
-        public ArrayView<float> lightBuffer;
-        public ArrayView<float> depthBuffer;
-        public ArrayView<float> outputBuffer;
+        public ArrayView1D<Ray, Stride1D.Dense> rayBuffer;
+        public ArrayView1D<float, Stride1D.Dense> colorBuffer;
+        public ArrayView1D<float, Stride1D.Dense> lightBuffer;
+        public ArrayView1D<float, Stride1D.Dense> depthBuffer;
 
-        public dFrameData(int width, int height, ArrayView<float> colorBuffer, ArrayView<float> lightBuffer, ArrayView<float> depthBuffer, ArrayView<float> outputBuffer)
+        public ArrayView1D<float, Stride1D.Dense> outputBuffer;
+
+        public dFrameData(FrameData frameData)
         {
-            this.width = width;
-            this.height = height;
-            this.colorBuffer = colorBuffer;
-            this.lightBuffer = lightBuffer;
-            this.depthBuffer = depthBuffer;
-            this.outputBuffer = outputBuffer;
+            width = frameData.width;
+            height = frameData.height;
+
+            rayBuffer = frameData.rayBuffer;
+            colorBuffer = frameData.colorBuffer;
+            lightBuffer = frameData.lightBuffer;
+            depthBuffer = frameData.depthBuffer;
+            outputBuffer = frameData.outputBuffer;
         }
     }
 }

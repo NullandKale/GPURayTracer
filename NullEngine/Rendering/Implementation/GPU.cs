@@ -14,27 +14,21 @@ namespace NullEngine.Rendering.Implementation
         public Context context;
         public Accelerator device;
 
-        public Action<Index1, dByteFrameBuffer, dFrameData, dRenderData> generateFrame;
+        public Action<Index1D, dByteFrameBuffer, dFrameData> generateFrame;
+        public Action<Index1D, Camera, dFrameData> generatePrimaryRays;
         public GPU(bool forceCPU)
         {
-            context = new Context(ContextFlags.AggressiveInlining | ContextFlags.FastMath);
-            context.EnableAlgorithms();
-
-            if(forceCPU || CudaAccelerator.CudaAccelerators.Length < 1)
-            {
-                device = new CPUAccelerator(context);
-            }
-            else
-            {
-                device = new CudaAccelerator(context);
-            }
+            context = Context.Create(builder => builder.Cuda().CPU().EnableAlgorithms());
+            device = context.GetPreferredDevice(preferCPU: false)
+                                      .CreateAccelerator(context);
 
             initRenderKernels();
         }
 
         private void initRenderKernels()
         {
-            generateFrame = device.LoadAutoGroupedStreamKernel<Index1, dByteFrameBuffer, dFrameData, dRenderData>(GPUKernels.GenerateFrame);
+            generateFrame = device.LoadAutoGroupedStreamKernel<Index1D, dByteFrameBuffer, dFrameData>(GPUKernels.GenerateFrame);
+            generatePrimaryRays = device.LoadAutoGroupedStreamKernel<Index1D, Camera, dFrameData>(GPUKernels.GeneratePrimaryRays);
         }
 
         public void Dispose()
@@ -43,16 +37,25 @@ namespace NullEngine.Rendering.Implementation
             context.Dispose();
         }
 
-        public void Render(ByteFrameBuffer output, RenderDataManager renderDataManager, FrameData frameData)
+        public void Render(Camera camera, dByteFrameBuffer output, dRenderData renderData, dFrameData frameData)
         {
-            generateFrame(output.memoryBuffer.Length / 3, output.frameBuffer, frameData.deviceFrameData, renderDataManager.getDeviceRenderData());
+            generatePrimaryRays(output.width * output.height, camera, frameData);
+            generateFrame(output.height * output.width, output, frameData);
             device.Synchronize();
         }
     }
 
     public static class GPUKernels
     {
-        public static void GenerateFrame(Index1 pixel, dByteFrameBuffer output, dFrameData frameData, dRenderData renderData)
+        public static void GeneratePrimaryRays(Index1D pixel, Camera camera, dFrameData frameData)
+        {
+            float x = ((float)(pixel % camera.width)) / camera.width;
+            float y = ((float)(pixel / camera.width)) / camera.height;
+
+            frameData.rayBuffer[pixel] = camera.GetRay(x, y);
+        }
+
+        public static void GenerateFrame(Index1D pixel, dByteFrameBuffer output, dFrameData frameData)
         {
             Vec3 color = UtilityKernels.readFrameBuffer(frameData.outputBuffer, pixel * 3);
             output.writeFrameBuffer(pixel * 3, color.x, color.y, color.z);

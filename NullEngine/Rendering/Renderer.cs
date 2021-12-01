@@ -27,6 +27,8 @@ namespace NullEngine.Rendering
 
         private GPU gpu;
         private RenderDataManager renderDataManager;
+        private Camera camera;
+        private Scene scene;
         private FrameData frameData;
         private UI.RenderFrame renderFrame;
         private Thread renderThread;
@@ -36,9 +38,10 @@ namespace NullEngine.Rendering
         {
             this.renderFrame = renderFrame;
             this.targetFramerate = targetFramerate;
-
             gpu = new GPU(forceCPU);
-            renderDataManager = new RenderDataManager(gpu);
+            this.scene = new Scene(gpu, "../../../Assets/Sponza/Scene.json");
+            camera = new Camera(new Vec3(), new Vec3(0, 0, -1), new Vec3(0, 1, 0), width, height, 40, new Vec3(0, 0, 0));
+            renderDataManager = scene.rdm;
             frameTimer = new FrameTimer();
 
             renderFrame.onResolutionChanged = OnResChanged;
@@ -62,6 +65,7 @@ namespace NullEngine.Rendering
         {
             this.width = width;
             this.height = height;
+            camera = new Camera(camera, width, height);
         }
 
         //eveything below this happens in the render thread
@@ -118,8 +122,8 @@ namespace NullEngine.Rendering
         {
             if (deviceFrameBuffer != null && !deviceFrameBuffer.isDisposed)
             {
-                gpu.Render(deviceFrameBuffer, renderDataManager, frameData);
-                deviceFrameBuffer.memoryBuffer.CopyTo(frameBuffer, 0, 0, frameBuffer.Length);
+                gpu.Render(camera, deviceFrameBuffer.frameBuffer, renderDataManager.getDeviceRenderData(), frameData.deviceFrameData);
+                deviceFrameBuffer.memoryBuffer.CopyToCPU(frameBuffer);
             }
         }
 
