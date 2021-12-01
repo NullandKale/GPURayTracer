@@ -47,6 +47,7 @@ namespace NullEngine.Rendering.DataStructures
                 //maybe one day do this async from the render thread
                 renderData = new RenderData(gpu.device, this);
                 TopLevelAccelerationStructure = new hTLAS(gpu, meshBuffers, renderData.meshBuffers);
+                isDirty = false;
             }
 
             return renderData.deviceRenderData;

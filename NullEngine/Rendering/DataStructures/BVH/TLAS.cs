@@ -4,6 +4,7 @@ using NullEngine.Rendering.Implementation;
 using NullEngine.Utils;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 
 namespace NullEngine.Rendering.DataStructures.BVH
@@ -37,9 +38,12 @@ namespace NullEngine.Rendering.DataStructures.BVH
             hBoxes = new List<AABB>();
 
             this.dMeshes = dMeshes;
-
+            Stopwatch timer = Stopwatch.StartNew();
             buildHTLAS();
             buildDTLAS();
+            timer.Stop();
+
+            Trace.WriteLine("TLAS build time " + timer.ElapsedMilliseconds);
         }
 
         private void buildHTLAS()
