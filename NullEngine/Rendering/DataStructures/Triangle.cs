@@ -31,5 +31,15 @@ namespace NullEngine.Rendering.DataStructures
         {
             return Vec3.unitVector(Vec3.cross(Vert1 - Vert0, Vert2 - Vert0));
         }
+
+        public Vec3 getCenter()
+        {
+            return (Vert0 + Vert1 + Vert2) / 3f;
+        }
+
+        public static int CompareTo(Triangle a, Triangle b)
+        {
+            return Vec3.CompareTo(a.getCenter(), b.getCenter());
+        }
     }
 }

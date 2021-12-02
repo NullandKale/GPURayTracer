@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace NullEngine.Rendering.DataStructures
@@ -22,6 +21,8 @@ namespace NullEngine.Rendering.DataStructures
         public List<float> rawVertexBuffers;
         public List<float> rawUVBuffers;
         public List<dMesh> meshBuffers;
+        public List<hBLAS> hBLASs;
+        public List<dBLAS> dBLASs;
 
         public RenderData renderData;
         private GPU gpu;
@@ -46,7 +47,21 @@ namespace NullEngine.Rendering.DataStructures
 
                 //maybe one day do this async from the render thread
                 renderData = new RenderData(gpu.device, this);
+
                 TopLevelAccelerationStructure = new hTLAS(gpu, meshBuffers, renderData.meshBuffers);
+
+                Stopwatch timer = Stopwatch.StartNew();
+
+                for(int i = 1; i < meshBuffers.Count; i++)
+                {
+                    hBLAS BLAS = new hBLAS(gpu, meshBuffers[i], this);
+                    hBLASs.Add(BLAS);
+                    dBLASs.Add(BLAS.GetDBLAS());
+                }
+
+                timer.Stop();
+                Trace.WriteLine("Total BLAS time: " + timer.ElapsedMilliseconds);
+
                 isDirty = false;
             }
 
@@ -102,7 +117,13 @@ namespace NullEngine.Rendering.DataStructures
             rawVertexBuffers.AddRange(verts);
             rawUVBuffers.AddRange(uvs);
             rawTriangleBuffers.AddRange(triangles);
-            meshBuffers.Add(new dMesh(id, boundingBox, origin, rotation, Voffset, Uoffset, Toffset, triangles.Count));
+            
+            dMesh mesh = new dMesh(id, boundingBox, origin, rotation, Voffset, Uoffset, Toffset, triangles.Count / 3);
+            meshBuffers.Add(mesh);
+
+            //hBLAS BLAS = new hBLAS(gpu, mesh, this);
+            //hBLASs.Add(BLAS);
+            //dBLASs.Add(BLAS.GetDBLAS());
 
             isDirty = true;
             return id;
@@ -129,6 +150,10 @@ namespace NullEngine.Rendering.DataStructures
             rawVertexBuffers = new List<float>(new float[3]);
             rawUVBuffers = new List<float>(new float[2]);
             meshBuffers = new List<dMesh>(new dMesh[1]);
+
+            hBLASs = new List<hBLAS>();
+            dBLASs = new List<dBLAS>(new dBLAS[1]);
+
             isDirty = true;
         }
     }
@@ -209,48 +234,6 @@ namespace NullEngine.Rendering.DataStructures
             this.width = width;
             this.height = height;
             this.offset = offset;
-        }
-    }
-
-    public struct dMesh
-    {
-        public int meshID;
-
-        public AABB boundingBox;
-        public Vec3 origin;
-        public Vec3 rotation;
-
-        public int vertsOffset;
-        public int uvOffset;
-        public int triangleOffset;
-        public int triangleLength;
-
-        public dMesh(int meshID, AABB boundingBox, Vec3 origin, Vec3 rotation, int vertsOffset, int uvOffset, int triangleOffset, int triangleLength)
-        {
-            this.meshID = meshID;
-            this.boundingBox = boundingBox;
-            this.origin = origin;
-            this.rotation = rotation;
-            this.vertsOffset = vertsOffset;
-            this.uvOffset = uvOffset;
-            this.triangleOffset = triangleOffset;
-            this.triangleLength = triangleLength;
-        }
-
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Triangle GetTriangle(int index, dRenderData renderData)
-        {
-            int triangleIndex = index * 3;
-            int vertexStartIndex0 = renderData.rawTriangleBuffers[triangleIndex] * 3;
-            int vertexStartIndex1 = renderData.rawTriangleBuffers[triangleIndex + 1] * 3;
-            int vertexStartIndex2 = renderData.rawTriangleBuffers[triangleIndex + 2] * 3;
-
-            Vec3 Vert0 = new Vec3(renderData.rawVertexBuffers[vertexStartIndex0], renderData.rawVertexBuffers[vertexStartIndex0 + 1], renderData.rawVertexBuffers[vertexStartIndex0 + 2]) + origin;
-            Vec3 Vert1 = new Vec3(renderData.rawVertexBuffers[vertexStartIndex1], renderData.rawVertexBuffers[vertexStartIndex1 + 1], renderData.rawVertexBuffers[vertexStartIndex1 + 2]) + origin;
-            Vec3 Vert2 = new Vec3(renderData.rawVertexBuffers[vertexStartIndex2], renderData.rawVertexBuffers[vertexStartIndex2 + 1], renderData.rawVertexBuffers[vertexStartIndex2 + 2]) + origin;
-
-            return new Triangle(Vert0, Vert1, Vert2);
         }
     }
 }

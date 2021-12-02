@@ -16,6 +16,11 @@ namespace NullEngine.Rendering.DataStructures
             this.max = max;
         }
 
+        public static AABB CreateFromTriangle(Triangle t)
+        {
+            return CreateFromTriangle(t.Vert0, t.Vert1, t.Vert2);
+        }
+
         public static AABB CreateFromTriangle(Vec3 Vert0, Vec3 Vert1, Vec3 Vert2)
         {
             float minX = Vert0.x;

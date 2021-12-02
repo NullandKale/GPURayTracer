@@ -22,7 +22,7 @@ namespace NullEngine.Rendering.DataStructures.BVH
         List<int> hRightIDs;
         List<int> hLeftIDs;
 
-        dTLAS dTLAS;
+        dTLAS DTLAS;
 
         MemoryBuffer1D<AABB, Stride1D.Dense> dBoxes;
         MemoryBuffer1D<int, Stride1D.Dense> dLeftIDs;
@@ -62,7 +62,7 @@ namespace NullEngine.Rendering.DataStructures.BVH
             dLeftIDs = gpu.device.Allocate1D(hLeftIDs.ToArray());
             dRightIDs = gpu.device.Allocate1D(hRightIDs.ToArray());
 
-            dTLAS = new dTLAS(dMeshes, dLeftIDs, dRightIDs, dBoxes);
+            DTLAS = new dTLAS(dMeshes, dLeftIDs, dRightIDs, dBoxes);
         }
 
         private void RecursiveAddNodeToDTLAS(hTLAS_node node)
