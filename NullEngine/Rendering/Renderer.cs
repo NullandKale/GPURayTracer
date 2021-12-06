@@ -1,20 +1,17 @@
 ﻿using NullEngine.Utils;
 using NullEngine.Rendering.DataStructures;
-using System;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
-using ILGPU;
 using ILGPU.Runtime;
 using NullEngine.Rendering.Implementation;
 using System.Windows;
-using System.Windows.Media;
+using System;
+using ILGPU.Algorithms;
 
 namespace NullEngine.Rendering
 {
     public class Renderer
     {
+        public float scale = -4;
         public int width;
         public int height;
         
@@ -26,7 +23,6 @@ namespace NullEngine.Rendering
         private byte[] frameBuffer = new byte[0];
 
         private GPU gpu;
-        private RenderDataManager renderDataManager;
         private Camera camera;
         private Scene scene;
         private FrameData frameData;
@@ -39,9 +35,8 @@ namespace NullEngine.Rendering
             this.renderFrame = renderFrame;
             this.targetFramerate = targetFramerate;
             gpu = new GPU(forceCPU);
-            this.scene = new Scene(gpu, "../../../Assets/Sponza/Scene.json");
-            camera = new Camera(new Vec3(), new Vec3(0, 0, -1), new Vec3(0, 1, 0), width, height, 40, new Vec3(0, 0, 0));
-            renderDataManager = scene.rdm;
+            this.scene = new Scene(gpu, "../../../Assets/CubeTest/Scene.json");
+            camera = new Camera(new Vec3(0, 4, -10), new Vec3(0, 0, 0), new Vec3(0, -1, 0), width, height, 40, new Vec3(0, 0, 0));
             frameTimer = new FrameTimer();
 
             renderFrame.onResolutionChanged = OnResChanged;
@@ -63,8 +58,17 @@ namespace NullEngine.Rendering
 
         private void OnResChanged(int width, int height)
         {
-            this.width = width;
-            this.height = height;
+            if(scale < 0)
+            {
+                this.width = (int)(width / XMath.Abs(scale));
+                this.height = (int)(height / XMath.Abs(scale));
+            }
+            else
+            {
+                this.width = (int)(width * scale);
+                this.height = (int)(height * scale);
+            }
+
             camera = new Camera(camera, width, height);
         }
 
@@ -122,7 +126,7 @@ namespace NullEngine.Rendering
         {
             if (deviceFrameBuffer != null && !deviceFrameBuffer.isDisposed)
             {
-                gpu.Render(camera, deviceFrameBuffer.frameBuffer, renderDataManager.getDeviceRenderData(), frameData.deviceFrameData);
+                gpu.Render(camera, scene, deviceFrameBuffer.frameBuffer, frameData.deviceFrameData);
                 deviceFrameBuffer.memoryBuffer.CopyToCPU(frameBuffer);
             }
         }

@@ -2,48 +2,211 @@
 using ILGPU.Runtime;
 using NullEngine.Rendering.Implementation;
 using NullEngine.Utils;
+using ObjLoader.Loader.Data.Elements;
+using ObjLoader.Loader.Loaders;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Text;
 
 namespace NullEngine.Rendering.DataStructures.BVH
 {
     public class hTLAS
     {
+        public RenderDataManager renderDataManager;
+
+        bool isDirty;
+        dTLAS DTLAS;
+
+        hTLAS_node root;
+        List<hBLAS> hBLASs;
+
         GPU gpu;
 
         List<dMesh> hMeshes;
-        MemoryBuffer1D<dMesh, Stride1D.Dense> dMeshes;
-
-        hTLAS_node root;
 
         List<AABB> hBoxes;
         List<int> hRightIDs;
         List<int> hLeftIDs;
 
-        dTLAS DTLAS;
+        List<dBLAS> hdBLASs;
+        List<AABB> hBLASBoxes;
+        List<int> hBLASRightIDs;
+        List<int> hBLASLeftIDs;
+        
+        internal MemoryBuffer1D<dMesh, Stride1D.Dense> dMeshes;
 
-        MemoryBuffer1D<AABB, Stride1D.Dense> dBoxes;
-        MemoryBuffer1D<int, Stride1D.Dense> dLeftIDs;
-        MemoryBuffer1D<int, Stride1D.Dense> dRightIDs;
+        internal MemoryBuffer1D<AABB, Stride1D.Dense> dBoxes;
+        internal MemoryBuffer1D<int, Stride1D.Dense> dLeftIDs;
+        internal MemoryBuffer1D<int, Stride1D.Dense> dRightIDs;
 
-        public hTLAS(GPU gpu, List<dMesh> hMeshes, MemoryBuffer1D<dMesh, Stride1D.Dense> dMeshes)
+        internal MemoryBuffer1D<dBLAS, Stride1D.Dense> dBLAS;
+        internal MemoryBuffer1D<AABB, Stride1D.Dense> dBLASBoxes;
+        internal MemoryBuffer1D<int, Stride1D.Dense> dBLASLeftIDs;
+        internal MemoryBuffer1D<int, Stride1D.Dense> dBLASRightIDs;
+
+
+
+        public hTLAS(GPU gpu)
         {
             this.gpu = gpu;
+            this.renderDataManager = new RenderDataManager(gpu);
+
+            hMeshes = new List<dMesh>();
             
-            this.hMeshes = hMeshes;
+            hBoxes = new List<AABB>();
             hRightIDs = new List<int>();
             hLeftIDs = new List<int>();
-            hBoxes = new List<AABB>();
 
-            this.dMeshes = dMeshes;
-            Stopwatch timer = Stopwatch.StartNew();
+            hBLASs = new List<hBLAS>();
+            hdBLASs = new List<dBLAS>();
+
+            hBLASBoxes = new List<AABB>();
+            hBLASLeftIDs = new List<int>();
+            hBLASRightIDs = new List<int>();
+
+            isDirty = true;
+        }
+
+        public void LoadMeshFromFile(Vec3 pos, Vec3 rot, string filename)
+        {
+            string[] lines = File.ReadAllLines(filename + (filename.EndsWith(".obj") ? "" : ".obj"));
+
+            List<float> verticies = new List<float>();
+            List<int> triangles = new List<int>();
+            List<int> mats = new List<int>();
+
+            int mat = 0;
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string line = lines[i];
+                string[] split = line.Split(" ");
+
+                if (line.Length > 0 && line[0] != '#' && split.Length >= 2)
+                {
+                    switch (split[0])
+                    {
+                        case "v":
+                            {
+                                if (double.TryParse(split[1], out double v0) && double.TryParse(split[2], out double v1) && double.TryParse(split[3], out double v2))
+                                {
+                                    verticies.Add((float)v0);
+                                    verticies.Add((float)-v1);
+                                    verticies.Add((float)v2);
+                                }
+                                break;
+                            }
+                        case "f":
+                            {
+                                List<int> indexes = new List<int>();
+                                for (int j = 1; j < split.Length; j++)
+                                {
+                                    string[] indicies = split[j].Split("/");
+
+                                    if (indicies.Length >= 1)
+                                    {
+                                        if (int.TryParse(indicies[0], out int i0))
+                                        {
+                                            indexes.Add(i0 < 0 ? i0 + verticies.Count : i0 - 1);
+                                        }
+                                    }
+                                }
+
+                                for (int j = 1; j < indexes.Count - 1; ++j)
+                                {
+                                    triangles.Add(indexes[0]);
+                                    triangles.Add(indexes[j]);
+                                    triangles.Add(indexes[j + 1]);
+                                    mats.Add(mat);
+                                }
+
+                                break;
+                            }
+                        case "usemtl":
+                            {
+                                // material handling happens here!
+                                break;
+                            }
+                    }
+
+                }
+            }
+
+            AABB aabb = AABB.CreateFromVerticies(verticies, pos);
+            dMesh mesh = renderDataManager.addGbufferForID(hMeshes.Count, aabb, pos, rot, triangles, verticies, new List<float>());
+
+            BuildAndAddBLAS(mesh);
+
+            hMeshes.Add(mesh);
+
+            isDirty = true;
+        }
+
+        public void AddObj(LoadResult loadedObj, Vec3 position, Vec3 rotation)
+        {
+            for (int i = 0; i < loadedObj.Groups.Count; i++)
+            {
+                ObjLoader.Loader.Data.Elements.Group group = loadedObj.Groups[i];
+
+                List<float> verts = new List<float>();
+                List<int> triangles = new List<int>();
+                List<float> uvs = new List<float>();
+
+                for (int j = 0; j < group.Faces.Count; j++)
+                {
+                    Face f = group.Faces[j];
+
+                    for (int k = 0; k < 3; k++)
+                    {
+                        if (f[k].VertexIndex < loadedObj.Vertices.Count
+                        && f[k].TextureIndex < loadedObj.Textures.Count)
+                        {
+                            triangles.Add(f[k].VertexIndex);
+
+                            verts.Add(loadedObj.Vertices[f[k].VertexIndex].X);
+                            verts.Add(loadedObj.Vertices[f[k].VertexIndex].Y);
+                            verts.Add(loadedObj.Vertices[f[k].VertexIndex].Z);
+
+                            uvs.Add(loadedObj.Textures[f[k].TextureIndex].X);
+                            uvs.Add(loadedObj.Textures[f[k].TextureIndex].Y);
+                        }
+                        else
+                        {
+                            Trace.WriteLine("Failed to load triangle " + j + " " + k + " from group " + i);
+                        }
+                    }
+                }
+
+                AABB aabb = AABB.CreateFromVerticies(verts, position);
+                dMesh mesh = renderDataManager.addGbufferForID(hMeshes.Count, aabb, position, rotation, triangles, verts, uvs);
+
+                BuildAndAddBLAS(mesh);
+
+                hMeshes.Add(mesh);
+
+                isDirty = true;
+            }
+        }
+
+        public dBLAS addGBlas(int meshID, List<AABB> hBoxes, List<int> hLeftIDs, List<int> hRightIDs)
+        {
+            int boxOffset = this.hBLASBoxes.Count;
+            int leftIDOffset = this.hBLASLeftIDs.Count;
+            int rightIDOffset = this.hBLASRightIDs.Count;
+
+            hBLASBoxes.AddRange(hBoxes);
+            hBLASLeftIDs.AddRange(hLeftIDs);
+            hBLASRightIDs.AddRange(hRightIDs);
+
+            return new dBLAS(meshID, leftIDOffset, hLeftIDs.Count, rightIDOffset, hRightIDs.Count, boxOffset, hBoxes.Count);
+        }
+
+        public void rebuildTLAS()
+        {
             buildHTLAS();
             buildDTLAS();
-            timer.Stop();
-
-            Trace.WriteLine("TLAS build time " + timer.ElapsedMilliseconds);
         }
 
         private void buildHTLAS()
@@ -57,12 +220,30 @@ namespace NullEngine.Rendering.DataStructures.BVH
         {
             hBoxes.Add(root.box);
             RecursiveAddNodeToDTLAS(root);
+        }
 
-            dBoxes = gpu.device.Allocate1D(hBoxes.ToArray());
-            dLeftIDs = gpu.device.Allocate1D(hLeftIDs.ToArray());
-            dRightIDs = gpu.device.Allocate1D(hRightIDs.ToArray());
+        public dTLAS GetDTLAS()
+        {
+            if(isDirty)
+            {
+                rebuildTLAS();
 
-            DTLAS = new dTLAS(dMeshes, dLeftIDs, dRightIDs, dBoxes);
+                dMeshes = gpu.device.Allocate1D(hMeshes.ToArray());
+
+                dBoxes = gpu.device.Allocate1D(hBoxes.ToArray());
+                dLeftIDs = gpu.device.Allocate1D(hLeftIDs.ToArray());
+                dRightIDs = gpu.device.Allocate1D(hRightIDs.ToArray());
+
+                dBLAS = gpu.device.Allocate1D(hdBLASs.ToArray());
+                dBLASBoxes = gpu.device.Allocate1D(hBLASBoxes.ToArray());
+                dBLASLeftIDs = gpu.device.Allocate1D(hBLASLeftIDs.ToArray());
+                dBLASRightIDs = gpu.device.Allocate1D(hBLASRightIDs.ToArray());
+
+                DTLAS = new dTLAS(this);
+                isDirty = false;
+            }
+
+            return DTLAS;
         }
 
         private void RecursiveAddNodeToDTLAS(hTLAS_node node)
@@ -89,21 +270,13 @@ namespace NullEngine.Rendering.DataStructures.BVH
             }
 
         }
-    }
 
-    public struct dTLAS
-    {
-        public ArrayView1D<dMesh, Stride1D.Dense> meshes;
-        public ArrayView1D<int, Stride1D.Dense> leftIDs;
-        public ArrayView1D<int, Stride1D.Dense> rightIDs;
-        public ArrayView1D<AABB, Stride1D.Dense> boxes;
-
-        public dTLAS(ArrayView1D<dMesh, Stride1D.Dense> meshes, ArrayView1D<int, Stride1D.Dense> leftIDs, ArrayView1D<int, Stride1D.Dense> rightIDs, ArrayView1D<AABB, Stride1D.Dense> boxes)
+        private void BuildAndAddBLAS(dMesh mesh)
         {
-            this.meshes = meshes;
-            this.leftIDs = leftIDs;
-            this.rightIDs = rightIDs;
-            this.boxes = boxes;
+            hBLAS BLAS = new hBLAS(gpu, mesh, renderDataManager);
+
+            hBLASs.Add(BLAS);
+            hdBLASs.Add(addGBlas(BLAS.mesh.meshID, BLAS.hBoxes, BLAS.hLeftIDs, BLAS.hRightIDs));
         }
     }
 

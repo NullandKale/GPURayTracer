@@ -1,18 +1,18 @@
 ﻿using NullEngine.Rendering.DataStructures;
+using NullEngine.Rendering.DataStructures.BVH;
 using NullEngine.Rendering.Implementation;
 using ObjLoader.Loader.Loaders;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace NullEngine
 {
     public class Scene
     {
         public GPU gpu;
-        public RenderDataManager rdm;
+        public hTLAS tlas;
 
         public string SceneFilePath;
         public SceneData sceneData;
@@ -21,7 +21,7 @@ namespace NullEngine
         {
             this.SceneFilePath = SceneFilePath;
             this.gpu = gpu;
-            rdm = new RenderDataManager(gpu);
+            tlas = new hTLAS(gpu);
 
             if(File.Exists(SceneFilePath))
             {
@@ -52,13 +52,18 @@ namespace NullEngine
                 throw new Exception("Scene Deserialization Error");
             }
 
-            var objLoaderFactory = new ObjLoaderFactory();
+            //var objLoaderFactory = new ObjLoaderFactory();
 
-            for (int i = 0; i < sceneData.objects.Count; i++)
+            //for (int i = 0; i < sceneData.objects.Count; i++)
+            //{
+            //    var objLoader = objLoaderFactory.Create(new MaterialFileFixer(sceneData.objects[i]));
+            //    LoadResult loadedObj = objLoader.Load(new FileStream(sceneData.objects[i], FileMode.Open));
+            //    tlas.AddObj(loadedObj, sceneData.positions[i], sceneData.rotations[i]);
+            //}
+
+            for(int i = 0; i < sceneData.objects.Count; i++)
             {
-                var objLoader = objLoaderFactory.Create(new MaterialFileFixer(sceneData.objects[i]));
-                LoadResult loadedObj = objLoader.Load(new FileStream(sceneData.objects[i], FileMode.Open));
-                rdm.AddObj(loadedObj, sceneData.positions[i], sceneData.rotations[i]);
+                tlas.LoadMeshFromFile(sceneData.positions[i], sceneData.rotations[i], sceneData.objects[i]);
             }
         }
 
@@ -67,11 +72,6 @@ namespace NullEngine
             var options = new JsonSerializerOptions { WriteIndented = true, IncludeFields = true };
             string jsonString = JsonSerializer.Serialize(sceneData, options);
             File.WriteAllText(SceneFilePath, jsonString);
-        }
-
-        public RenderDataManager GetRDM()
-        {
-            return rdm;
         }
     }
 

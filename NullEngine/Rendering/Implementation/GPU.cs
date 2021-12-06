@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using NullEngine.Rendering.DataStructures;
+using NullEngine.Rendering.DataStructures.BVH;
 
 namespace NullEngine.Rendering.Implementation
 {
@@ -13,13 +14,13 @@ namespace NullEngine.Rendering.Implementation
     {
         public Context context;
         public Accelerator device;
-
-        public Action<Index1D, dByteFrameBuffer, dFrameData> generateFrame;
         public Action<Index1D, Camera, dFrameData> generatePrimaryRays;
+        public Action<Index1D, dFrameData, dTLAS, dRenderData> hitRays;
+        public Action<Index1D, dByteFrameBuffer, dFrameData> generateFrame;
         public GPU(bool forceCPU)
         {
             context = Context.Create(builder => builder.Cuda().CPU().EnableAlgorithms());
-            device = context.GetPreferredDevice(preferCPU: false)
+            device = context.GetPreferredDevice(preferCPU: forceCPU)
                                       .CreateAccelerator(context);
 
             initRenderKernels();
@@ -28,6 +29,7 @@ namespace NullEngine.Rendering.Implementation
         private void initRenderKernels()
         {
             generateFrame = device.LoadAutoGroupedStreamKernel<Index1D, dByteFrameBuffer, dFrameData>(GPUKernels.GenerateFrame);
+            hitRays = device.LoadAutoGroupedStreamKernel<Index1D, dFrameData, dTLAS, dRenderData>(GPUKernels.HitRays);
             generatePrimaryRays = device.LoadAutoGroupedStreamKernel<Index1D, Camera, dFrameData>(GPUKernels.GeneratePrimaryRays);
         }
 
@@ -37,9 +39,10 @@ namespace NullEngine.Rendering.Implementation
             context.Dispose();
         }
 
-        public void Render(Camera camera, dByteFrameBuffer output, dRenderData renderData, dFrameData frameData)
+        public void Render(Camera camera, Scene scene, dByteFrameBuffer output, dFrameData frameData)
         {
             generatePrimaryRays(output.width * output.height, camera, frameData);
+            hitRays(output.width * output.height, frameData, scene.tlas.GetDTLAS(), scene.tlas.renderDataManager.getDeviceRenderData());
             generateFrame(output.height * output.width, output, frameData);
             device.Synchronize();
         }
@@ -53,6 +56,21 @@ namespace NullEngine.Rendering.Implementation
             float y = ((float)(pixel / camera.width)) / camera.height;
 
             frameData.rayBuffer[pixel] = camera.GetRay(x, y);
+        }
+
+        public static void HitRays(Index1D pixel, dFrameData frameData, dTLAS tlas, dRenderData renderData)
+        {
+            HitRecord hit = new HitRecord();
+            hit.t = float.MaxValue;
+
+            tlas.hit(renderData, frameData.rayBuffer[pixel], 0.1f, ref hit);
+
+            if (hit.t < float.MaxValue)
+            {
+                frameData.outputBuffer[(pixel * 3)]     = 1;
+                frameData.outputBuffer[(pixel * 3) + 1] = 0;
+                frameData.outputBuffer[(pixel * 3) + 2] = 1;
+            }
         }
 
         public static void GenerateFrame(Index1D pixel, dByteFrameBuffer output, dFrameData frameData)

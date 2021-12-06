@@ -18,15 +18,9 @@ namespace NullEngine.Rendering.DataStructures.BVH
 
         hBLAS_node root;
 
-        List<AABB> hBoxes;
-        List<int> hRightIDs;
-        List<int> hLeftIDs;
-
-        dBLAS DBLAS;
-
-        MemoryBuffer1D<AABB, Stride1D.Dense> dBoxes;
-        MemoryBuffer1D<int, Stride1D.Dense> dLeftIDs;
-        MemoryBuffer1D<int, Stride1D.Dense> dRightIDs;
+        internal List<AABB> hBoxes;
+        internal List<int> hRightIDs;
+        internal List<int> hLeftIDs;
 
         public hBLAS(GPU gpu, dMesh mesh, RenderDataManager renderData)
         {
@@ -34,27 +28,21 @@ namespace NullEngine.Rendering.DataStructures.BVH
             this.mesh = mesh;
             this.renderData = renderData;
 
-            hRightIDs = new List<int>();
-            hLeftIDs = new List<int>();
-            hBoxes = new List<AABB>();
+            hRightIDs = new List<int>((mesh.triangleLength * 2) + 1);
+            hLeftIDs = new List<int>((mesh.triangleLength * 2) + 1);
+            hBoxes = new List<AABB>((mesh.triangleLength * 2) + 1);
 
             buildHBLAS();
             buildDBLAS();
         }
 
-        public dBLAS GetDBLAS()
-        {
-            return DBLAS;
-        }
-
         private void buildHBLAS()
         {
-            List<Triangle> triangles = mesh.GetTriangles(renderData);
-            // there may be a better way to build this
-            List<(Triangle t, Vec3 center, int id)> TandID = new List<(Triangle, Vec3, int)>();
-            for (int i = 0; i < triangles.Count; i++)
+            List<TriangleRecord> TandID = new List<TriangleRecord>(mesh.triangleLength);
+            for (int i = 0; i < mesh.triangleLength; i++)
             {
-                TandID.Add((triangles[i], triangles[i].getCenter(), i));
+                Triangle t = mesh.GetTriangle(i, renderData);
+                TandID.Add(new TriangleRecord{ t=t, center=t.getCenter(), id=i});
             }
 
             TandID.Sort((a, b) => Vec3.CompareTo(a.center, b.center));
@@ -65,12 +53,7 @@ namespace NullEngine.Rendering.DataStructures.BVH
         {
             hBoxes.Add(root.box);
             RecursiveAddNodeToDBLAS(root);
-
-            dBoxes = gpu.device.Allocate1D(hBoxes.ToArray());
-            dLeftIDs = gpu.device.Allocate1D(hLeftIDs.ToArray());
-            dRightIDs = gpu.device.Allocate1D(hRightIDs.ToArray());
-
-            DBLAS = new dBLAS(mesh.meshID, dLeftIDs, dRightIDs, dBoxes); 
+            root = null;
         }
 
         private void RecursiveAddNodeToDBLAS(hBLAS_node node)
@@ -98,25 +81,48 @@ namespace NullEngine.Rendering.DataStructures.BVH
 
         }
 
-    }
+        internal static readonly Comparer<TriangleRecord> xCompare = Comparer<TriangleRecord>.Create(boxXCompare);
+        internal static readonly Comparer<TriangleRecord> yCompare = Comparer<TriangleRecord>.Create(boxYCompare);
+        internal static readonly Comparer<TriangleRecord> zCompare = Comparer<TriangleRecord>.Create(boxZCompare);
 
-    public struct dBLAS
-    {
-        public int meshID;
-        public ArrayView1D<int, Stride1D.Dense> leftIDs;
-        public ArrayView1D<int, Stride1D.Dense> rightIDs;
-        public ArrayView1D<AABB, Stride1D.Dense> boxes;
-
-        public dBLAS(int meshID, ArrayView1D<int, Stride1D.Dense> leftIDs, ArrayView1D<int, Stride1D.Dense> rightIDs, ArrayView1D<AABB, Stride1D.Dense> boxes)
+        private static int boxXCompare(TriangleRecord a, TriangleRecord b)
         {
-            this.meshID = meshID;
-            this.leftIDs = leftIDs;
-            this.rightIDs = rightIDs;
-            this.boxes = boxes;
+            if (a.center.x - b.center.x < 0.0)
+            {
+                return -1;
+            }
+            else
+            {
+                return 1;
+            }
+        }
+
+        private static int boxYCompare(TriangleRecord a, TriangleRecord b)
+        {
+            if (a.center.y - b.center.y < 0.0)
+            {
+                return -1;
+            }
+            else
+            {
+                return 1;
+            }
+        }
+
+        private static int boxZCompare(TriangleRecord a, TriangleRecord b)
+        {
+            if (a.center.z - b.center.z < 0.0)
+            {
+                return -1;
+            }
+            else
+            {
+                return 1;
+            }
         }
     }
 
-    class hBLAS_node
+    internal class hBLAS_node
     {
         public hBLAS_node left;
         public hBLAS_node right;
@@ -126,21 +132,21 @@ namespace NullEngine.Rendering.DataStructures.BVH
 
         public AABB box;
 
-        public hBLAS_node(Span<(Triangle t, Vec3 center, int id)> triangles, int n)
+        public hBLAS_node(Span<TriangleRecord> triangles, int n)
         {
             int axis = SharedRNG.randi(0, 3);
 
             if (axis == 0)
             {
-                triangles.Sort(xCompare);
+                triangles.Sort(hBLAS.xCompare);
             }
             else if (axis == 1)
             {
-                triangles.Sort(yCompare);
+                triangles.Sort(hBLAS.yCompare);
             }
             else
             {
-                triangles.Sort(zCompare);
+                triangles.Sort(hBLAS.zCompare);
             }
 
             if (n == 1)
@@ -162,45 +168,12 @@ namespace NullEngine.Rendering.DataStructures.BVH
                 box = AABB.surrounding_box(left.box, right.box);
             }
         }
+    }
 
-        private Comparer<(Triangle t, Vec3 center, int id)> xCompare = Comparer<(Triangle t, Vec3 center, int id)>.Create(boxXCompare);
-        private Comparer<(Triangle t, Vec3 center, int id)> yCompare = Comparer<(Triangle t, Vec3 center, int id)>.Create(boxYCompare);
-        private Comparer<(Triangle t, Vec3 center, int id)> zCompare = Comparer<(Triangle t, Vec3 center, int id)>.Create(boxZCompare);
-
-        private static int boxXCompare((Triangle t, Vec3 center, int id) a, (Triangle t, Vec3 center, int id) b)
-        {
-            if (a.center.x - b.center.x < 0.0)
-            {
-                return -1;
-            }
-            else
-            {
-                return 1;
-            }
-        }
-
-        private static int boxYCompare((Triangle t, Vec3 center, int id) a, (Triangle t, Vec3 center, int id) b)
-        {
-            if (a.center.x - b.center.x < 0.0)
-            {
-                return -1;
-            }
-            else
-            {
-                return 1;
-            }
-        }
-
-        private static int boxZCompare((Triangle t, Vec3 center, int id) a, (Triangle t, Vec3 center, int id) b)
-        {
-            if (a.center.x - b.center.x < 0.0)
-            {
-                return -1;
-            }
-            else
-            {
-                return 1;
-            }
-        }
+    internal struct TriangleRecord
+    {
+        public Triangle t;
+        public Vec3 center;
+        public int id;
     }
 }

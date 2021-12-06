@@ -20,15 +20,10 @@ namespace NullEngine.Rendering.DataStructures
         public List<int> rawTriangleBuffers;
         public List<float> rawVertexBuffers;
         public List<float> rawUVBuffers;
-        public List<dMesh> meshBuffers;
-        public List<hBLAS> hBLASs;
-        public List<dBLAS> dBLASs;
 
         public RenderData renderData;
         private GPU gpu;
         private bool isDirty;
-
-        public hTLAS TopLevelAccelerationStructure;
 
         public RenderDataManager(GPU gpu)
         {
@@ -48,85 +43,26 @@ namespace NullEngine.Rendering.DataStructures
                 //maybe one day do this async from the render thread
                 renderData = new RenderData(gpu.device, this);
 
-                TopLevelAccelerationStructure = new hTLAS(gpu, meshBuffers, renderData.meshBuffers);
-
-                Stopwatch timer = Stopwatch.StartNew();
-
-                for(int i = 1; i < meshBuffers.Count; i++)
-                {
-                    hBLAS BLAS = new hBLAS(gpu, meshBuffers[i], this);
-                    hBLASs.Add(BLAS);
-                    dBLASs.Add(BLAS.GetDBLAS());
-                }
-
-                timer.Stop();
-                Trace.WriteLine("Total BLAS time: " + timer.ElapsedMilliseconds);
-
                 isDirty = false;
             }
 
             return renderData.deviceRenderData;
         }
 
-        public void AddObj(LoadResult loadedObj, Vec3 position, Vec3 rotation)
-        {       
-            for(int i = 0; i < loadedObj.Groups.Count; i++)
-            {
-                ObjLoader.Loader.Data.Elements.Group group = loadedObj.Groups[i];
-                List<float> verts = new List<float>();
-                List<int> triangles = new List<int>();
-                List<float> uvs = new List<float>();
-
-                for(int j = 0; j < group.Faces.Count; j++)
-                {
-                    Face f = group.Faces[j];
-                   
-                    for(int k = 0; k < 3; k++)
-                    {
-                        if(f[k].VertexIndex < loadedObj.Vertices.Count
-                        && f[k].TextureIndex < loadedObj.Textures.Count)
-                        {
-                            triangles.Add(f[k].VertexIndex);
-
-                            verts.Add(loadedObj.Vertices[f[k].VertexIndex].X);
-                            verts.Add(loadedObj.Vertices[f[k].VertexIndex].Y);
-                            verts.Add(loadedObj.Vertices[f[k].VertexIndex].Z);
-
-                            uvs.Add(loadedObj.Textures[f[k].TextureIndex].X);
-                            uvs.Add(loadedObj.Textures[f[k].TextureIndex].Y);
-                        }
-                        else
-                        {
-                            Trace.WriteLine("Failed to load triangle " + j + " " + k + " from group " + i);
-                        }
-                    }
-                }
-
-                AABB aabb = AABB.CreateFromVerticies(verts, position);
-                addGbufferForID(aabb, position, rotation, triangles, verts, uvs);
-            }
-        }
-
-        public int addGbufferForID(AABB boundingBox, Vec3 origin, Vec3 rotation, List<int> triangles, List<float> verts, List<float> uvs)
+        public dMesh addGbufferForID(int id, AABB boundingBox, Vec3 origin, Vec3 rotation, List<int> triangles, List<float> verts, List<float> uvs)
         {
             int Voffset = rawVertexBuffers.Count;
             int Uoffset = rawUVBuffers.Count;
             int Toffset = rawTriangleBuffers.Count;
-            int id = meshBuffers.Count;
 
             rawVertexBuffers.AddRange(verts);
             rawUVBuffers.AddRange(uvs);
             rawTriangleBuffers.AddRange(triangles);
             
             dMesh mesh = new dMesh(id, boundingBox, origin, rotation, Voffset, Uoffset, Toffset, triangles.Count / 3);
-            meshBuffers.Add(mesh);
-
-            //hBLAS BLAS = new hBLAS(gpu, mesh, this);
-            //hBLASs.Add(BLAS);
-            //dBLASs.Add(BLAS.GetDBLAS());
 
             isDirty = true;
-            return id;
+            return mesh;
         }
 
         public int addGTextureForID(int width, int height, List<float> pixels)
@@ -143,16 +79,12 @@ namespace NullEngine.Rendering.DataStructures
 
         private void setupDummyData()
         {
-            rawTextureData = new List<float>(new float[3]);
-            textures = new List<dTexture>(new dTexture[1]);
+            rawTextureData = new List<float>();
+            textures = new List<dTexture>();
 
-            rawTriangleBuffers = new List<int>(new int[3]);
-            rawVertexBuffers = new List<float>(new float[3]);
-            rawUVBuffers = new List<float>(new float[2]);
-            meshBuffers = new List<dMesh>(new dMesh[1]);
-
-            hBLASs = new List<hBLAS>();
-            dBLASs = new List<dBLAS>(new dBLAS[1]);
+            rawTriangleBuffers = new List<int>();
+            rawVertexBuffers = new List<float>();
+            rawUVBuffers = new List<float>();
 
             isDirty = true;
         }
@@ -166,29 +98,41 @@ namespace NullEngine.Rendering.DataStructures
         public MemoryBuffer1D<int, Stride1D.Dense> rawTriangleBuffers;
         public MemoryBuffer1D<float, Stride1D.Dense> rawVertexBuffers;
         public MemoryBuffer1D<float, Stride1D.Dense> rawUVBuffers;
-        public MemoryBuffer1D<dMesh, Stride1D.Dense> meshBuffers;
 
         public dRenderData deviceRenderData;
 
         public RenderData(Accelerator device, RenderDataManager dataManager)
         {
-            rawTextureData = device.Allocate1D<float>(dataManager.rawTextureData.Count);
-            rawTextureData.CopyFromCPU(dataManager.rawTextureData.ToArray());
+            if (dataManager.rawTextureData.Count > 0)
+            {
+                rawTextureData = device.Allocate1D(dataManager.rawTextureData.ToArray());
+                textures = device.Allocate1D(dataManager.textures.ToArray());
+            }
+            else
+            {
+                rawTextureData = device.Allocate1D<float>(1);
+                textures = device.Allocate1D<dTexture>(1);
+            }
 
-            textures = device.Allocate1D<dTexture>(dataManager.textures.Count);
-            textures.CopyFromCPU(dataManager.textures.ToArray());
+            if(dataManager.rawTriangleBuffers.Count > 0)
+            {
+                rawTriangleBuffers = device.Allocate1D(dataManager.rawTriangleBuffers.ToArray());
+                rawVertexBuffers = device.Allocate1D(dataManager.rawVertexBuffers.ToArray());
+            }
+            else
+            {
+                rawTriangleBuffers = device.Allocate1D<int>(1);
+                rawVertexBuffers = device.Allocate1D<float>(1);
+            }
 
-            rawTriangleBuffers = device.Allocate1D<int>(dataManager.rawTriangleBuffers.Count);
-            rawTriangleBuffers.CopyFromCPU(dataManager.rawTriangleBuffers.ToArray());
-
-            rawUVBuffers = device.Allocate1D<float>(dataManager.rawUVBuffers.Count);
-            rawUVBuffers.CopyFromCPU(dataManager.rawUVBuffers.ToArray());
-
-            rawVertexBuffers = device.Allocate1D<float>(dataManager.rawVertexBuffers.Count);
-            rawVertexBuffers.CopyFromCPU(dataManager.rawVertexBuffers.ToArray());
-
-            meshBuffers = device.Allocate1D<dMesh>(dataManager.meshBuffers.Count);
-            meshBuffers.CopyFromCPU(dataManager.meshBuffers.ToArray());
+            if(dataManager.rawUVBuffers.Count > 0)
+            {
+                rawUVBuffers = device.Allocate1D(dataManager.rawUVBuffers.ToArray());
+            }
+            else
+            {
+                rawUVBuffers = device.Allocate1D<float>(1);
+            }
 
             deviceRenderData = new dRenderData(this);
         }
@@ -198,7 +142,6 @@ namespace NullEngine.Rendering.DataStructures
             rawTextureData.Dispose();
             rawVertexBuffers.Dispose();
             textures.Dispose();
-            meshBuffers.Dispose();
         }
     }
 
@@ -210,7 +153,6 @@ namespace NullEngine.Rendering.DataStructures
         public ArrayView1D<int, Stride1D.Dense> rawTriangleBuffers;
         public ArrayView1D<float, Stride1D.Dense> rawVertexBuffers;
         public ArrayView1D<float, Stride1D.Dense> rawUVBuffers;
-        public ArrayView1D<dMesh, Stride1D.Dense> meshBuffers;
 
         public dRenderData(RenderData renderData)
         {
@@ -219,7 +161,6 @@ namespace NullEngine.Rendering.DataStructures
             rawTriangleBuffers = renderData.rawTriangleBuffers;
             rawVertexBuffers = renderData.rawVertexBuffers;
             rawUVBuffers = renderData.rawUVBuffers;
-            meshBuffers = renderData.meshBuffers;
         }
     }
 
