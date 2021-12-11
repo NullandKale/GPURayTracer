@@ -11,7 +11,7 @@ namespace NullEngine.Rendering
 {
     public class Renderer
     {
-        public float scale = -4;
+        public float scale = 1;
         public int width;
         public int height;
         
@@ -69,7 +69,7 @@ namespace NullEngine.Rendering
                 this.height = (int)(height * scale);
             }
 
-            camera = new Camera(camera, width, height);
+            camera = new Camera(camera, this.width, this.height);
         }
 
         //eveything below this happens in the render thread

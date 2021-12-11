@@ -52,8 +52,8 @@ namespace NullEngine.Rendering.Implementation
     {
         public static void GeneratePrimaryRays(Index1D pixel, Camera camera, dFrameData frameData)
         {
-            float x = ((float)(pixel % camera.width)) / camera.width;
-            float y = ((float)(pixel / camera.width)) / camera.height;
+            float x = (pixel % camera.width);
+            float y = (pixel / camera.width);
 
             frameData.rayBuffer[pixel] = camera.GetRay(x, y);
         }

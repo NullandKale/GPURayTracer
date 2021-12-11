@@ -109,7 +109,6 @@ namespace NullEngine.Rendering.DataStructures
             return new Ray(origin, direction);
         }
 
-
         public Ray GetRay(float x, float y)
         {
             return rayFromUnit(2f * (x * reciprocalWidth) - 1f, 2f * (y * reciprocalHeight) - 1f);

@@ -96,7 +96,7 @@ namespace NullEngine.Rendering.DataStructures
             Vec3 pVec = Vec3.cross(r.b, tvVec);
             float det = Vec3.dot(tuVec, pVec);
 
-            if (XMath.Abs(det) < epsilon)
+            if (XMath.Abs(det) < hit.t)
             {
                 float invDet = 1.0f / det;
                 Vec3 tVec = r.a - Vert0;
