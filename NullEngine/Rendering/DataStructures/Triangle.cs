@@ -89,7 +89,7 @@ namespace NullEngine.Rendering.DataStructures
             return t;
         }
 
-        public float GetTriangleHit(Ray r, float epsilon, ref HitRecord hit)
+        public float GetTriangleHit(Ray r, int id, ref HitRecord hit)
         {
             Vec3 tuVec = uVector();
             Vec3 tvVec = vVector();
@@ -111,6 +111,7 @@ namespace NullEngine.Rendering.DataStructures
                     {
                         hit.t = temp;
                         hit.p = r.pointAtParameter(temp);
+                        hit.drawableID = id;
 
                         if(det < 0)
                         {

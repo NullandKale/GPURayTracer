@@ -1,0 +1,13 @@
+{
+  "path": "../../../Assets/Suzannes/Scene.json",
+  "objects": [
+    "../../../Assets/Suzannes/Suzanne.obj"
+  ],
+  "positions": [
+    {}
+  ],
+  "rotations": [
+    {}
+  ],
+  "objectCount": 1
+}

@@ -25,6 +25,7 @@ namespace NullEngine.Rendering.DataStructures.BVH
         GPU gpu;
 
         List<dMesh> hMeshes;
+        List<int> hSplitAxis;
 
         List<AABB> hBoxes;
         List<int> hRightIDs;
@@ -36,6 +37,7 @@ namespace NullEngine.Rendering.DataStructures.BVH
         List<int> hBLASLeftIDs;
         
         internal MemoryBuffer1D<dMesh, Stride1D.Dense> dMeshes;
+        internal MemoryBuffer1D<int, Stride1D.Dense> dSplitAxis;
 
         internal MemoryBuffer1D<AABB, Stride1D.Dense> dBoxes;
         internal MemoryBuffer1D<int, Stride1D.Dense> dLeftIDs;
@@ -54,7 +56,8 @@ namespace NullEngine.Rendering.DataStructures.BVH
             this.renderDataManager = new RenderDataManager(gpu);
 
             hMeshes = new List<dMesh>();
-            
+            hSplitAxis = new List<int>();
+
             hBoxes = new List<AABB>();
             hRightIDs = new List<int>();
             hLeftIDs = new List<int>();
@@ -190,17 +193,21 @@ namespace NullEngine.Rendering.DataStructures.BVH
             }
         }
 
-        public dBLAS addGBlas(int meshID, List<AABB> hBoxes, List<int> hLeftIDs, List<int> hRightIDs)
+        public dBLAS addGBlas(int meshID, List<int> hSplitAxis, List<AABB> hBoxes, List<int> hLeftIDs, List<int> hRightIDs)
         {
+            int splitAxisOffset = this.hSplitAxis.Count;
             int boxOffset = this.hBLASBoxes.Count;
             int leftIDOffset = this.hBLASLeftIDs.Count;
             int rightIDOffset = this.hBLASRightIDs.Count;
 
+            this.hSplitAxis.AddRange(hSplitAxis);
             hBLASBoxes.AddRange(hBoxes);
             hBLASLeftIDs.AddRange(hLeftIDs);
             hBLASRightIDs.AddRange(hRightIDs);
 
-            return new dBLAS(meshID, leftIDOffset, hLeftIDs.Count, rightIDOffset, hRightIDs.Count, boxOffset, hBoxes.Count);
+            Debug.Assert(boxOffset == leftIDOffset && leftIDOffset == rightIDOffset && boxOffset == splitAxisOffset);
+
+            return new dBLAS(meshID, splitAxisOffset, leftIDOffset, hLeftIDs.Count, rightIDOffset, hRightIDs.Count, boxOffset, hBoxes.Count);
         }
 
         public void rebuildTLAS()
@@ -229,7 +236,8 @@ namespace NullEngine.Rendering.DataStructures.BVH
                 rebuildTLAS();
 
                 dMeshes = gpu.device.Allocate1D(hMeshes.ToArray());
-
+                
+                dSplitAxis = gpu.device.Allocate1D(hSplitAxis.ToArray()); 
                 dBoxes = gpu.device.Allocate1D(hBoxes.ToArray());
                 dLeftIDs = gpu.device.Allocate1D(hLeftIDs.ToArray());
                 dRightIDs = gpu.device.Allocate1D(hRightIDs.ToArray());
@@ -276,7 +284,7 @@ namespace NullEngine.Rendering.DataStructures.BVH
             hBLAS BLAS = new hBLAS(gpu, mesh, renderDataManager);
 
             hBLASs.Add(BLAS);
-            hdBLASs.Add(addGBlas(BLAS.mesh.meshID, BLAS.hBoxes, BLAS.hLeftIDs, BLAS.hRightIDs));
+            hdBLASs.Add(addGBlas(BLAS.mesh.meshID, BLAS.hSplitAxis, BLAS.hBoxes, BLAS.hLeftIDs, BLAS.hRightIDs));
         }
     }
 
@@ -288,17 +296,19 @@ namespace NullEngine.Rendering.DataStructures.BVH
         public int leftID = -1;
         public int rightID = -1;
 
+        public int splitAxis = -1;
+
         public AABB box;
 
         public hTLAS_node(List<dMesh> meshes, int n)
         {
-            int axis = SharedRNG.randi(0, 3);
+            splitAxis = SharedRNG.randi(0, 3);
 
-            if (axis == 0)
+            if (splitAxis == 0)
             {
                 meshes.Sort(0, n, xCompare);
             }
-            else if (axis == 1)
+            else if (splitAxis == 1)
             {
                 meshes.Sort(0, n, yCompare);
             }

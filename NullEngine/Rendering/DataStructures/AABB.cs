@@ -156,6 +156,32 @@ namespace NullEngine.Rendering.DataStructures
             return new AABB(small, big);
         }
 
+        public Vec2 IntersectBox(Vec3 vfStart, Vec3 vfInvDir)
+        {
+            Vec2 T = new Vec2();
+
+            Vec3 vfDiffMax = max - vfStart;
+            vfDiffMax *= vfInvDir;
+            Vec3 vfDiffMin = min - vfStart;
+            vfDiffMin *= vfInvDir;
+
+            T.x = XMath.Min(vfDiffMin.x, vfDiffMax.x);
+            T.y = XMath.Max(vfDiffMin.x, vfDiffMax.x);
+
+            T.x = XMath.Max(T.x, XMath.Min(vfDiffMin.y, vfDiffMax.y));
+            T.y = XMath.Min(T.y, XMath.Max(vfDiffMin.y, vfDiffMax.y));
+
+            T.x = XMath.Max(T.x, XMath.Min(vfDiffMin.z, vfDiffMax.z));
+            T.y = XMath.Min(T.y, XMath.Max(vfDiffMin.z, vfDiffMax.z));
+
+            if(T.x > T.y)
+            {
+                T.x = -1;
+                T.y = -1;
+            }
+
+            return T;
+        }
 
         public bool hit(Ray ray, float tMin, float tMax)
         {

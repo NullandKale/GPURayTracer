@@ -39,7 +39,7 @@ namespace NullEngine
 
         private void InitRenderer()
         {
-            renderer = new Renderer(renderFrame, 60, true);
+            renderer = new Renderer(renderFrame, 60, false);
             renderer.Start();
         }
     }

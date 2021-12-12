@@ -61,7 +61,7 @@ namespace NullEngine
             //    tlas.AddObj(loadedObj, sceneData.positions[i], sceneData.rotations[i]);
             //}
 
-            for(int i = 0; i < sceneData.objects.Count; i++)
+            for (int i = 0; i < sceneData.objects.Count; i++)
             {
                 tlas.LoadMeshFromFile(sceneData.positions[i], sceneData.rotations[i], sceneData.objects[i]);
             }

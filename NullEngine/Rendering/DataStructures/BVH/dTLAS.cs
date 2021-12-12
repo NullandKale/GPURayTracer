@@ -8,6 +8,8 @@ namespace NullEngine.Rendering.DataStructures.BVH
     {
         public ArrayView1D<dMesh, Stride1D.Dense> meshes;
 
+        public ArrayView1D<int, Stride1D.Dense> splitAxis;
+
         public ArrayView1D<int, Stride1D.Dense> leftIDs;
         public ArrayView1D<int, Stride1D.Dense> rightIDs;
         public ArrayView1D<AABB, Stride1D.Dense> boxes;
@@ -20,7 +22,7 @@ namespace NullEngine.Rendering.DataStructures.BVH
         public dTLAS(hTLAS TLAS)
         {
             meshes = TLAS.dMeshes;
-
+            splitAxis = TLAS.dSplitAxis;
             leftIDs = TLAS.dLeftIDs;
             rightIDs = TLAS.dRightIDs;
             boxes = TLAS.dBoxes;
@@ -89,7 +91,7 @@ namespace NullEngine.Rendering.DataStructures.BVH
 
             }
 
-            return hit.t != 0; //TODO SET THIS TO A BAD HIT
+            return hit.t != float.MaxValue;
         }
     }
 

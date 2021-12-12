@@ -18,6 +18,7 @@ namespace NullEngine.Rendering.DataStructures.BVH
 
         hBLAS_node root;
 
+        internal List<int> hSplitAxis;
         internal List<AABB> hBoxes;
         internal List<int> hRightIDs;
         internal List<int> hLeftIDs;
@@ -28,12 +29,15 @@ namespace NullEngine.Rendering.DataStructures.BVH
             this.mesh = mesh;
             this.renderData = renderData;
 
+            hSplitAxis = new List<int>((mesh.triangleLength * 2) + 1);
             hRightIDs = new List<int>((mesh.triangleLength * 2) + 1);
             hLeftIDs = new List<int>((mesh.triangleLength * 2) + 1);
             hBoxes = new List<AABB>((mesh.triangleLength * 2) + 1);
 
             buildHBLAS();
             buildDBLAS();
+
+            Debug.Assert(hSplitAxis.Count == hRightIDs.Count && hSplitAxis.Count == hLeftIDs.Count && hBoxes.Count == hSplitAxis.Count);
         }
 
         private void buildHBLAS()
@@ -61,6 +65,7 @@ namespace NullEngine.Rendering.DataStructures.BVH
             //node is leaf
             if (node.leftID != -1)
             {
+                hSplitAxis.Add(node.splitAxis);
                 hLeftIDs.Add(node.leftID);
                 hRightIDs.Add(node.rightID);
             }
@@ -72,6 +77,7 @@ namespace NullEngine.Rendering.DataStructures.BVH
                 hBoxes.Add(node.left.box);
                 hBoxes.Add(node.right.box);
 
+                hSplitAxis.Add(node.splitAxis);
                 hLeftIDs.Add(-left);
                 hRightIDs.Add(-right);
 
@@ -130,17 +136,19 @@ namespace NullEngine.Rendering.DataStructures.BVH
         public int leftID = -1;
         public int rightID = -1;
 
+        public int splitAxis = -1;
+
         public AABB box;
 
         public hBLAS_node(Span<TriangleRecord> triangles, int n)
         {
-            int axis = SharedRNG.randi(0, 3);
+            splitAxis = SharedRNG.randi(0, 3);
 
-            if (axis == 0)
+            if (splitAxis == 0)
             {
                 triangles.Sort(hBLAS.xCompare);
             }
-            else if (axis == 1)
+            else if (splitAxis == 1)
             {
                 triangles.Sort(hBLAS.yCompare);
             }

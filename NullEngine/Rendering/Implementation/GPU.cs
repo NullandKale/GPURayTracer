@@ -19,7 +19,7 @@ namespace NullEngine.Rendering.Implementation
         public Action<Index1D, dByteFrameBuffer, dFrameData> generateFrame;
         public GPU(bool forceCPU)
         {
-            context = Context.Create(builder => builder.Cuda().CPU().EnableAlgorithms());
+            context = Context.Create(builder => builder.Cuda().CPU().EnableAlgorithms().Assertions());
             device = context.GetPreferredDevice(preferCPU: forceCPU)
                                       .CreateAccelerator(context);
 
@@ -63,19 +63,34 @@ namespace NullEngine.Rendering.Implementation
             HitRecord hit = new HitRecord();
             hit.t = float.MaxValue;
 
-            tlas.hit(renderData, frameData.rayBuffer[pixel], 0.1f, ref hit);
+            if(true)
+            {
+                for(int i = 0; i < tlas.meshes.Length; i++)
+                {
+                    dMesh mesh = tlas.meshes[i];
+                    for(int j = 0; j < mesh.triangleLength; j++)
+                    {
+                        mesh.GetTriangle(j, renderData).GetTriangleHit(frameData.rayBuffer[pixel], j, ref hit);
+                    }
+                }
+            }
+            else
+            {
+                tlas.hit(renderData, frameData.rayBuffer[pixel], 0.01f, ref hit);
+            }
 
             if (hit.t < float.MaxValue)
             {
-                frameData.outputBuffer[(pixel * 3)]     = 1;
-                frameData.outputBuffer[(pixel * 3) + 1] = 0;
-                frameData.outputBuffer[(pixel * 3) + 2] = 1;
+                frameData.outputBuffer[(pixel * 3)]     = hit.t;
+                frameData.outputBuffer[(pixel * 3) + 1] = hit.t;
+                frameData.outputBuffer[(pixel * 3) + 2] = hit.t;
             }
         }
 
         public static void GenerateFrame(Index1D pixel, dByteFrameBuffer output, dFrameData frameData)
         {
             Vec3 color = UtilityKernels.readFrameBuffer(frameData.outputBuffer, pixel * 3);
+            color = Vec3.reinhard(color);
             output.writeFrameBuffer(pixel * 3, color.x, color.y, color.z);
         }
 

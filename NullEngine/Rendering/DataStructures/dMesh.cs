@@ -41,11 +41,20 @@ namespace NullEngine.Rendering.DataStructures
             return triangles;
         }
 
+        public float GetMeshHit(Ray r, ref HitRecord hit, dRenderData renderData)
+        {
+            for(int i = 0; i < triangleLength; i++)
+            {
+                GetTriangle(i, renderData).GetTriangleHit(r, i, ref hit);
+            }
+
+            return hit.t;
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Triangle GetTriangle(int index, dRenderData renderData)
         {
-            int triangleIndex = ((index) * 3);
+            int triangleIndex = index * 3;
             int vertexStartIndex0 = (renderData.rawTriangleBuffers[triangleIndex] * 3);
             int vertexStartIndex1 = (renderData.rawTriangleBuffers[triangleIndex + 1] * 3);
             int vertexStartIndex2 = (renderData.rawTriangleBuffers[triangleIndex + 2] * 3);

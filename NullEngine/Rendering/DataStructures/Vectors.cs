@@ -6,6 +6,19 @@ using System.Text;
 
 namespace NullEngine.Rendering.DataStructures
 {
+    public struct Vec2
+    {
+        public float x;
+        public float y;
+
+        public Vec2(float x, float y)
+        {
+            this.x = x;
+            this.y = y;
+        }
+    }
+
+
     public struct Vec3
     {
         public float x;
