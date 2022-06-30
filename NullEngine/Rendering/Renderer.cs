@@ -37,7 +37,7 @@ namespace NullEngine.Rendering
             //this.scene = new Scene(gpu, "../../../Assets/CubeTest/Scene.json");
             //this.scene = new Scene(gpu, "../../../Assets/Sponza/Scene.json");
             this.scene = new Scene(gpu, "../../../Assets/Suzannes/Scene.json");
-            camera = new Camera(new Vec3(0, 0, 10), new Vec3(0, 0, 0), new Vec3(0, -1, 0), width, height, 40, new Vec3(0, 0, 0));
+            camera = new Camera(new Vec3(0, -3, 3), new Vec3(0, 0, 0), new Vec3(0, -1, 0), width, height, 40, new Vec3(0, 0, 0));
             frameTimer = new FrameTimer();
 
             renderFrame.onResolutionChanged = OnResChanged;
@@ -57,12 +57,12 @@ namespace NullEngine.Rendering
             renderThread.Join();
         }
 
-        private void OnResChanged(int width, int height)
+        private void OnResChanged(int newWidth, int newHeight)
         {
-            this.width = width;
-            this.height = height;
+            width = newWidth;
+            height = newHeight;
 
-            camera = new Camera(camera, this.width, this.height);
+            camera = new Camera(camera, width, height);
         }
 
         //eveything below this happens in the render thread

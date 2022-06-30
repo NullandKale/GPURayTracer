@@ -32,6 +32,7 @@ namespace NullEngine.Rendering.DataStructures.BVH
         List<int> hLeftIDs;
 
         List<dBLAS> hdBLASs;
+        List<int> hBLASSplitAxis;
         List<AABB> hBLASBoxes;
         List<int> hBLASRightIDs;
         List<int> hBLASLeftIDs;
@@ -44,6 +45,7 @@ namespace NullEngine.Rendering.DataStructures.BVH
         internal MemoryBuffer1D<int, Stride1D.Dense> dRightIDs;
 
         internal MemoryBuffer1D<dBLAS, Stride1D.Dense> dBLAS;
+        internal MemoryBuffer1D<int, Stride1D.Dense> dBLASSplitAxis;
         internal MemoryBuffer1D<AABB, Stride1D.Dense> dBLASBoxes;
         internal MemoryBuffer1D<int, Stride1D.Dense> dBLASLeftIDs;
         internal MemoryBuffer1D<int, Stride1D.Dense> dBLASRightIDs;
@@ -65,6 +67,7 @@ namespace NullEngine.Rendering.DataStructures.BVH
             hBLASs = new List<hBLAS>();
             hdBLASs = new List<dBLAS>();
 
+            hBLASSplitAxis = new List<int>();
             hBLASBoxes = new List<AABB>();
             hBLASLeftIDs = new List<int>();
             hBLASRightIDs = new List<int>();
@@ -195,12 +198,12 @@ namespace NullEngine.Rendering.DataStructures.BVH
 
         public dBLAS addGBlas(int meshID, List<int> hSplitAxis, List<AABB> hBoxes, List<int> hLeftIDs, List<int> hRightIDs)
         {
-            int splitAxisOffset = this.hSplitAxis.Count;
-            int boxOffset = this.hBLASBoxes.Count;
-            int leftIDOffset = this.hBLASLeftIDs.Count;
-            int rightIDOffset = this.hBLASRightIDs.Count;
+            int splitAxisOffset = hBLASSplitAxis.Count;
+            int boxOffset = hBLASBoxes.Count;
+            int leftIDOffset = hBLASLeftIDs.Count;
+            int rightIDOffset = hBLASRightIDs.Count;
 
-            this.hSplitAxis.AddRange(hSplitAxis);
+            hBLASSplitAxis.AddRange(hSplitAxis);
             hBLASBoxes.AddRange(hBoxes);
             hBLASLeftIDs.AddRange(hLeftIDs);
             hBLASRightIDs.AddRange(hRightIDs);
@@ -243,6 +246,7 @@ namespace NullEngine.Rendering.DataStructures.BVH
                 dRightIDs = gpu.device.Allocate1D(hRightIDs.ToArray());
 
                 dBLAS = gpu.device.Allocate1D(hdBLASs.ToArray());
+                dBLASSplitAxis = gpu.device.Allocate1D(hBLASSplitAxis.ToArray());
                 dBLASBoxes = gpu.device.Allocate1D(hBLASBoxes.ToArray());
                 dBLASLeftIDs = gpu.device.Allocate1D(hBLASLeftIDs.ToArray());
                 dBLASRightIDs = gpu.device.Allocate1D(hBLASRightIDs.ToArray());
@@ -259,6 +263,7 @@ namespace NullEngine.Rendering.DataStructures.BVH
             //node is leaf
             if(node.leftID != -1)
             {
+                hSplitAxis.Add(node.splitAxis);
                 hLeftIDs.Add(node.leftID);
                 hRightIDs.Add(node.rightID);
             }
@@ -270,6 +275,7 @@ namespace NullEngine.Rendering.DataStructures.BVH
                 hBoxes.Add(node.left.box);
                 hBoxes.Add(node.right.box);
 
+                hSplitAxis.Add(node.splitAxis);
                 hLeftIDs.Add(-left);
                 hRightIDs.Add(-right);
 

@@ -45,29 +45,18 @@ namespace NullEngine.Rendering.DataStructures.BVH
                     Triangle left = TLAS.meshes[meshID].GetTriangle(leftID, renderData);
                     Triangle right = TLAS.meshes[meshID].GetTriangle(rightID, renderData);
 
-                    float Hit = left.GetTriangleHit(r, leftID, ref rec);
-                    float rightHit = right.GetTriangleHit(r, leftID, ref rec);
-
-                    int hitTri = leftID;
-
-                    if (rightHit < Hit)
-                    {
-                        hitTri = rightID;
-                        Hit = rightHit;
-                    }
-
-                    if (Hit < float.MaxValue)
-                    {
-                        rec.drawableID = meshID;
-                    }
+                    left.GetTriangleHit(r, leftID, ref rec);
+                    right.GetTriangleHit(r, rightID, ref rec);
                 }
                 else // node is leaf
                 {
                     leftID = -leftID;
                     rightID = -rightID;
 
-                    bool hit_left = TLAS.BLASBoxes[leftID].hit(r, tMin, rec.t);
-                    bool hit_right = TLAS.BLASBoxes[rightID].hit(r, tMin, rec.t);
+                    Debug.Assert(leftID + 1 == rightID);
+
+                    bool hit_left = TLAS.BLASBoxes[leftID + boxesOffset].hit(r, tMin, rec.t);
+                    bool hit_right = TLAS.BLASBoxes[rightID + boxesOffset].hit(r, tMin, rec.t);
 
                     //TODO put the most likely node LAST
                     if (hit_left)
@@ -94,7 +83,7 @@ namespace NullEngine.Rendering.DataStructures.BVH
 
             int currentNode;
 
-            int stackSize = 64;
+            int stackSize = 1024;
             ArrayView<int> stack = LocalMemory.Allocate<int>(stackSize); // need this to be as small as possible
             int sp = 0;
 

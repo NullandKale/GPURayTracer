@@ -19,7 +19,7 @@ namespace NullEngine.Rendering.Implementation
         public Action<Index1D, dByteFrameBuffer, dFrameData> generateFrame;
         public GPU(bool forceCPU)
         {
-            context = Context.Create(builder => builder.Cuda().CPU().EnableAlgorithms().Assertions());
+            context = Context.Create(builder => builder.Cuda().CPU().Optimize(OptimizationLevel.O2).EnableAlgorithms());
             device = context.GetPreferredDevice(preferCPU: forceCPU)
                                       .CreateAccelerator(context);
 
@@ -81,16 +81,17 @@ namespace NullEngine.Rendering.Implementation
 
             if (hit.t < float.MaxValue)
             {
-                frameData.outputBuffer[(pixel * 3)]     = hit.t;
-                frameData.outputBuffer[(pixel * 3) + 1] = hit.t;
-                frameData.outputBuffer[(pixel * 3) + 2] = hit.t;
+                Vec3 color = UtilityKernels.GetRandomColor(hit.drawableID);
+                frameData.outputBuffer[(pixel * 3)]     = color.x;
+                frameData.outputBuffer[(pixel * 3) + 1] = color.y;
+                frameData.outputBuffer[(pixel * 3) + 2] = color.z;
             }
         }
 
         public static void GenerateFrame(Index1D pixel, dByteFrameBuffer output, dFrameData frameData)
         {
             Vec3 color = UtilityKernels.readFrameBuffer(frameData.outputBuffer, pixel * 3);
-            color = Vec3.reinhard(color);
+            //color = Vec3.aces_approx(color);
             output.writeFrameBuffer(pixel * 3, color.x, color.y, color.z);
         }
 

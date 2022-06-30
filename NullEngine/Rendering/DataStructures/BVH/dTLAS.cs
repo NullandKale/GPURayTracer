@@ -15,6 +15,7 @@ namespace NullEngine.Rendering.DataStructures.BVH
         public ArrayView1D<AABB, Stride1D.Dense> boxes;
 
         public ArrayView1D<dBLAS , Stride1D.Dense> BLASs;
+        public ArrayView1D<int, Stride1D.Dense> BLASSplitAxis;
         public ArrayView1D<AABB, Stride1D.Dense> BLASBoxes;
         public ArrayView1D<int, Stride1D.Dense> BLASLeftIDs;
         public ArrayView1D<int, Stride1D.Dense> BLASRightIDs;
@@ -28,6 +29,7 @@ namespace NullEngine.Rendering.DataStructures.BVH
             boxes = TLAS.dBoxes;
             
             BLASs = TLAS.dBLAS;
+            BLASSplitAxis = TLAS.dBLASSplitAxis;
             BLASBoxes = TLAS.dBLASBoxes;
             BLASLeftIDs =TLAS.dBLASLeftIDs;
             BLASRightIDs = TLAS.dBLASRightIDs;

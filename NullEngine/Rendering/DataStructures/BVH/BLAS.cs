@@ -29,6 +29,8 @@ namespace NullEngine.Rendering.DataStructures.BVH
             this.mesh = mesh;
             this.renderData = renderData;
 
+            // I have no idea what this hueristic actually is apparently
+            // but this is wrong
             hSplitAxis = new List<int>((mesh.triangleLength * 2) + 1);
             hRightIDs = new List<int>((mesh.triangleLength * 2) + 1);
             hLeftIDs = new List<int>((mesh.triangleLength * 2) + 1);
@@ -62,29 +64,41 @@ namespace NullEngine.Rendering.DataStructures.BVH
 
         private void RecursiveAddNodeToDBLAS(hBLAS_node node)
         {
+            //add split axis for parent
+            hSplitAxis.Add(node.splitAxis);
+
+            int left;
+            int right;
+
             //node is leaf
             if (node.leftID != -1)
             {
-                hSplitAxis.Add(node.splitAxis);
-                hLeftIDs.Add(node.leftID);
-                hRightIDs.Add(node.rightID);
+                left = node.leftID;
+                right = node.rightID;
+
+                //add child leaf ids
+                hLeftIDs.Add(left);
+                hRightIDs.Add(right);
             }
             else // node is not leaf
             {
-                int left = hBoxes.Count;
-                int right = left + 1;
+                // ---------------------------------------
+                // calculate left and right child node ids
+                left = -hBoxes.Count;
+                right = left - 1;
 
+                // add left and right aabb
                 hBoxes.Add(node.left.box);
                 hBoxes.Add(node.right.box);
+                // ---------------------------------------
 
-                hSplitAxis.Add(node.splitAxis);
-                hLeftIDs.Add(-left);
-                hRightIDs.Add(-right);
+                hLeftIDs.Add(left);
+                hRightIDs.Add(right);
 
+                // add children recursively
                 RecursiveAddNodeToDBLAS(node.left);
                 RecursiveAddNodeToDBLAS(node.right);
             }
-
         }
 
         internal static readonly Comparer<TriangleRecord> xCompare = Comparer<TriangleRecord>.Create(boxXCompare);

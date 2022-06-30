@@ -8,8 +8,8 @@
 
   <ItemGroup>
     <PackageReference Include="CjClutter.ObjLoader" Version="1.0.0" />
-    <PackageReference Include="ILGPU" Version="1.0.0-rc3" />
-    <PackageReference Include="ILGPU.Algorithms" Version="1.0.0-rc3" />
+    <PackageReference Include="ILGPU" Version="1.1.0-beta1" />
+    <PackageReference Include="ILGPU.Algorithms" Version="1.1.0-beta1" />
     <PackageReference Include="System.Text.Json" Version="6.0.0" />
   </ItemGroup>
 

@@ -23,6 +23,71 @@ namespace NullEngine.Rendering.Implementation
             frameBuffer.writeFrameBuffer(newIndex * 3, r, g, b);
         }
 
+        public static Vec3 GetRandomColor(int id)
+        {
+            switch (id % 14)
+            {
+                case 0:
+                    {
+                        return new Vec3(0, 0, 1);
+                    }
+                case 1:
+                    {
+                        return new Vec3(0, 1, 0);
+                    }
+                case 2:
+                    {
+                        return new Vec3(1, 0, 0);
+                    }
+                case 3:
+                    {
+                        return new Vec3(1, 0, 1);
+                    }
+                case 4:
+                    {
+                        return new Vec3(1, 1, 0);
+                    }
+                case 5:
+                    {
+                        return new Vec3(1, 1, 1);
+                    }
+                case 6:
+                    {
+                        return new Vec3(0, 1, 1);
+                    }
+                case 7:
+                    {
+                        return new Vec3(0.5f, 0.5f, 0.5f);
+                    }
+                case 8:
+                    {
+                        return new Vec3(0, 0, 0.5f);
+                    }
+                case 9:
+                    {
+                        return new Vec3(0, 0.5f, 0);
+                    }
+                case 10:
+                    {
+                        return new Vec3(0, 0.5f, 0.5f);
+                    }
+                case 11:
+                    {
+                        return new Vec3(0.5f, 0, 0);
+                    }
+                case 12:
+                    {
+                        return new Vec3(0.5f, 0, 0.5f);
+                    }
+                case 13:
+                    {
+                        return new Vec3(0.5f, 0.5f, 0);
+                    }
+            }
+
+            return new Vec3();
+        }
+
         public static Vec3 readFrameBuffer(ArrayView1D<float, Stride1D.Dense> frame, int width, int x, int y)
         {
             int newIndex = ((y * width) + x) * 3;
